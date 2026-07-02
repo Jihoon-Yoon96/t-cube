@@ -19,6 +19,7 @@
       <main class="tc-builder-main">
         <section class="tc-builder-main-inner">
           <BuilderTopToolbar
+            v-if="showTopToolbar"
             :active-viewport="builderStore.activeViewport"
             :viewport-modes="viewportModes"
             @update:active-viewport="builderStore.setActiveViewport"
@@ -55,6 +56,7 @@ const viewportModes: Array<{
 ]
 
 const activeMode = computed(() => builderStore.step === 'editor' ? 'edit' : 'create')
+const showTopToolbar = computed(() => builderStore.step === 'html-editor')
 
 function handleSave() {
   builderStore.markDirty(false)

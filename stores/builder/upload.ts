@@ -54,11 +54,22 @@ export function useBuilderUploadState(step: Ref<BuilderStep>) {
     if (!uploadedFile.value) {
       uploadError.value = '분석을 시작하려면 먼저 파일을 업로드해주세요.'
       importStatus.value = 'error'
-      return
+      return false
     }
 
     uploadError.value = ''
     importStatus.value = 'importing'
+    return true
+  }
+
+  function completeFileAnalysis() {
+    uploadError.value = ''
+    importStatus.value = 'complete'
+  }
+
+  function failFileAnalysis(message: string) {
+    uploadError.value = message
+    importStatus.value = 'error'
   }
 
   function validateUploadFile(file: File) {
@@ -94,6 +105,8 @@ export function useBuilderUploadState(step: Ref<BuilderStep>) {
     selectUploadFileType,
     uploadDesignFile,
     clearUploadedFile,
-    startFileAnalysis
+    startFileAnalysis,
+    completeFileAnalysis,
+    failFileAnalysis
   }
 }

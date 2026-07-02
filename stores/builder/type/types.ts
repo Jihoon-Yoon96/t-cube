@@ -9,6 +9,7 @@ export type BuilderStep =
   | 'pdf-image-upload'
   | 'file-upload'
   | 'ai-design'
+  | 'html-editor'
   | 'editor'
   | 'preview'
 

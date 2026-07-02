@@ -6,6 +6,7 @@ import { useBuilderDesignState } from './builder/design'
 import { useBuilderEditorState } from './builder/editor'
 import { useBuilderStepState } from './builder/step'
 import { useBuilderUploadState } from './builder/upload'
+import { parseHtmlFile } from '~/services/html/parseHtmlDocument'
 
 export type {
   BuilderDesignMethod,
@@ -14,6 +15,11 @@ export type {
   BuilderUploadFileType,
   BuilderViewportMode
 } from './builder/type/types'
+export type {
+  ParsedHtmlDocument,
+  ParsedHtmlEditableElement,
+  ParsedHtmlElementType
+} from '~/services/html/parseHtmlDocument'
 
 export const useBuilderStore = defineStore('builder', () => {
   const stepState = useBuilderStepState()
@@ -21,10 +27,37 @@ export const useBuilderStore = defineStore('builder', () => {
   const designState = useBuilderDesignState(stepState.step)
   const editorState = useBuilderEditorState()
 
+  async function startFileAnalysis() {
+    if (!uploadState.startFileAnalysis()) return
+
+    if (!uploadState.uploadedFile.value) return
+
+    if (uploadState.selectedUploadFileType.value !== 'HTML') {
+      uploadState.failFileAnalysis('현재 편집 기능은 HTML 파일부터 지원합니다. 이미지/PDF 분석은 다음 단계에서 연결할 예정입니다.')
+      return
+    }
+
+    try {
+      const parsedDocument = await parseHtmlFile(uploadState.uploadedFile.value)
+
+      editorState.setCurrentDocument(parsedDocument)
+      editorState.markDirty(false)
+      uploadState.completeFileAnalysis()
+      stepState.setStep('html-editor')
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : 'HTML 파일을 분석하는 중 문제가 발생했습니다.'
+
+      uploadState.failFileAnalysis(message)
+    }
+  }
+
   return {
     ...stepState,
     ...uploadState,
     ...designState,
-    ...editorState
+    ...editorState,
+    startFileAnalysis
   }
 })

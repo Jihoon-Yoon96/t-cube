@@ -3,6 +3,7 @@
   <CreateTemplateSelectFileType v-else-if="builderStore.step === 'pdf-image-upload'" />
   <CreateTemplateUploadFile v-else-if="builderStore.step === 'file-upload'" />
   <CreateTemplateHowToMakeDesign v-else-if="builderStore.step === 'ai-design'" />
+  <CreateTemplateHtmlDocumentEditor v-else-if="builderStore.step === 'html-editor'" />
   <EditTemplateSelectTemplate v-else-if="builderStore.step === 'editor'" />
 
   <div v-else class="body-placeholder">
@@ -14,6 +15,7 @@
 
 <script setup lang="ts">
 import CreateTemplateHowToMakeDesign from './steps/create-template/HowToMakeDesign.vue'
+import CreateTemplateHtmlDocumentEditor from './steps/create-template/HtmlDocumentEditor.vue'
 import CreateTemplateSelectFileType from './steps/create-template/SelectFileType.vue'
 import CreateTemplateStart from './steps/create-template/Start.vue'
 import CreateTemplateUploadFile from './steps/create-template/UploadFile.vue'
@@ -293,6 +295,269 @@ const stageSubtitle = computed(() => {
   opacity: 0.44;
 }
 
+.html-editor-screen {
+  min-height: calc(100vh - 74px);
+  height: calc(100vh - 74px);
+  display: grid;
+  grid-template-rows: 1fr;
+  margin: -34px;
+  margin-top: 0;
+}
+
+.html-editor-layout {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.html-editor-layout.show-element-list {
+  grid-template-columns: 280px minmax(0, 1fr);
+}
+
+.html-editor-panel,
+.html-editor-preview {
+  border: 1px solid rgba(174, 183, 232, 0.1);
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.035));
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.html-editor-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.html-editor-panel-title,
+.html-editor-preview-toolbar {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid rgba(174, 183, 232, 0.1);
+  padding: 0 16px;
+}
+
+.html-editor-preview-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.html-editor-panel-toggle {
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid rgba(174, 183, 232, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--text-primary);
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.html-editor-panel-toggle:hover,
+.html-editor-panel-toggle[aria-pressed="true"] {
+  border-color: rgba(139, 145, 255, 0.46);
+  background: rgba(139, 145, 255, 0.16);
+  color: #ffffff;
+}
+
+.html-editor-panel-title strong,
+.html-editor-preview-toolbar strong {
+  color: var(--text-strong);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.html-editor-panel-title span,
+.html-editor-preview-toolbar span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.element-list-panel {
+  border-right: 0;
+  overflow-y: auto;
+}
+
+.element-list-item {
+  width: calc(100% - 20px);
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  margin: 10px;
+  padding: 10px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.element-list-item:hover,
+.element-list-item.active {
+  border-color: rgba(139, 145, 255, 0.34);
+  background: rgba(139, 145, 255, 0.1);
+}
+
+.element-list-item i {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  background: rgba(139, 145, 255, 0.15);
+  color: var(--accent);
+  font-size: 20px;
+}
+
+.element-list-item span {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.element-list-item strong {
+  color: var(--text-strong);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.element-list-item small {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.html-editor-preview {
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.html-browser-preview {
+  position: relative;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  background:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.035) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.035) 75%);
+  background-color: #151a31;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  background-size: 20px 20px;
+  padding: 22px;
+  overflow: auto;
+}
+
+.html-browser-frame {
+  min-height: 100%;
+  height: 100%;
+  display: block;
+  max-width: 100%;
+  border: 1px solid rgba(174, 183, 232, 0.18);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.28);
+}
+
+.html-link-edit-popover {
+  position: absolute;
+  z-index: 5;
+  width: 248px;
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(174, 183, 232, 0.18);
+  border-radius: 10px;
+  background: rgba(17, 21, 40, 0.98);
+  padding: 8px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.34);
+}
+
+.html-link-edit-popover button {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  padding: 0 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.html-link-edit-popover button:hover {
+  background: rgba(139, 145, 255, 0.14);
+  color: #ffffff;
+}
+
+.html-link-edit-popover label {
+  display: grid;
+  gap: 8px;
+}
+
+.html-link-edit-popover label span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.html-link-edit-popover input {
+  width: 100%;
+  height: 36px;
+  border: 1px solid rgba(174, 183, 232, 0.16);
+  border-radius: 8px;
+  background: rgba(13, 16, 32, 0.92);
+  color: var(--text-primary);
+  padding: 0 10px;
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.html-link-edit-popover input:focus {
+  border-color: rgba(139, 145, 255, 0.62);
+}
+
+.html-link-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.html-link-edit-actions button {
+  justify-content: center;
+  min-height: 32px;
+}
+
+.html-link-edit-actions button:last-child {
+  background: var(--accent-3);
+  color: #ffffff;
+}
+
 .template-list-screen,
 .body-placeholder {
   min-height: calc(100vh - 142px);
@@ -489,6 +754,10 @@ const stageSubtitle = computed(() => {
   .template-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .html-editor-layout.show-element-list {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 760px) {
@@ -542,6 +811,20 @@ const stageSubtitle = computed(() => {
 
   .upload-actions {
     flex-direction: column;
+  }
+
+  .html-editor-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .html-editor-layout.show-element-list {
+    grid-template-columns: 1fr;
+  }
+
+  .element-list-panel {
+    max-height: 280px;
+    border-right: 1px solid rgba(174, 183, 232, 0.1);
+    border-bottom: 0;
   }
 
   .template-list-screen,

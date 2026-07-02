@@ -30,7 +30,7 @@ const builderStore = useBuilderStore()
 const uploadStepItems = computed(() => [
   {
     label: 'HTML 업로드',
-    active: builderStore.step === 'file-upload' && builderStore.selectedUploadFileType === 'HTML',
+    active: ['file-upload', 'html-editor'].includes(builderStore.step) && builderStore.selectedUploadFileType === 'HTML',
     depth: 2,
     last: false,
     onClick: () => builderStore.selectUploadFileType('HTML')
@@ -108,7 +108,7 @@ const createStepItems = computed(() => {
     ]
   }
 
-  if (builderStore.step === 'file-upload') {
+  if (builderStore.step === 'file-upload' || builderStore.step === 'html-editor') {
     return [
       {
         label: '파일 업로드',

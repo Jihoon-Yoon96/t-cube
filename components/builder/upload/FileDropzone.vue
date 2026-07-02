@@ -67,7 +67,7 @@
       <button
         class="primary-action"
         type="button"
-        :disabled="!builderStore.uploadedFileSummary"
+        :disabled="!builderStore.uploadedFileSummary || builderStore.importStatus === 'importing'"
         @click="builderStore.startFileAnalysis()"
       >
         <TcubeIcon icon="ri-search-eye-line" />

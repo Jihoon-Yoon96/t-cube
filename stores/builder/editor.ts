@@ -3,10 +3,12 @@
  */
 
 
+import type { ParsedHtmlDocument, ParsedHtmlEditableElement } from '~/services/html/parseHtmlDocument'
+
 export function useBuilderEditorState() {
-  const selectedElementId = ref<string | null>('headline')
+  const selectedElementId = ref<string | null>(null)
   const dirty = ref(false)
-  const currentDocument = ref<Record<string, unknown> | null>(null)
+  const currentDocument = ref<ParsedHtmlDocument | null>(null)
 
   function selectElement(elementId: string | null) {
     selectedElementId.value = elementId
@@ -16,8 +18,30 @@ export function useBuilderEditorState() {
     dirty.value = value
   }
 
-  function setCurrentDocument(document: Record<string, unknown> | null) {
+  function setCurrentDocument(document: ParsedHtmlDocument | null) {
     currentDocument.value = document
+    selectedElementId.value = document?.elements[0]?.id || null
+  }
+
+  function updateCurrentDocumentElement(
+    elementId: string,
+    patch: Partial<Pick<ParsedHtmlEditableElement, 'content' | 'src' | 'alt' | 'href'>>
+  ) {
+    if (!currentDocument.value) return
+
+    currentDocument.value = {
+      ...currentDocument.value,
+      elements: currentDocument.value.elements.map((element) => {
+        if (element.id !== elementId) return element
+
+        return {
+          ...element,
+          ...patch
+        }
+      })
+    }
+
+    dirty.value = true
   }
 
   return {
@@ -26,6 +50,7 @@ export function useBuilderEditorState() {
     currentDocument,
     selectElement,
     markDirty,
-    setCurrentDocument
+    setCurrentDocument,
+    updateCurrentDocumentElement
   }
 }
