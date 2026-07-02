@@ -1,78 +1,30 @@
-export type BuilderStep =
-  | 'start'
-  | 'html-upload'
-  | 'pdf-image-upload'
-  | 'file-upload'
-  | 'ai-design'
-  | 'editor'
-  | 'preview'
+/**
+ * 빌더 전체 Pinia store를 조립하는 진입점입니다.
+ * 각 도메인별 상태 모듈을 합쳐 외부 컴포넌트에는 단일 store API를 제공합니다.
+ */
+import { useBuilderDesignState } from './builder/design'
+import { useBuilderEditorState } from './builder/editor'
+import { useBuilderStepState } from './builder/step'
+import { useBuilderUploadState } from './builder/upload'
 
-export type BuilderViewportMode = 'desktop' | 'tablet' | 'mobile'
-export type BuilderUploadFileType = 'HTML' | '이미지' | 'PDF'
-export type BuilderDesignMethod = 'layout' | 'ai-prompt'
+export type {
+  BuilderDesignMethod,
+  BuilderStep,
+  BuilderUploadedFileSummary,
+  BuilderUploadFileType,
+  BuilderViewportMode
+} from './builder/type/types'
 
 export const useBuilderStore = defineStore('builder', () => {
-  const step = ref<BuilderStep>('start')
-  const activeViewport = ref<BuilderViewportMode>('desktop')
-  const selectedUploadFileType = ref<BuilderUploadFileType>('HTML')
-  const selectedDesignMethod = ref<BuilderDesignMethod | null>(null)
-  const selectedElementId = ref<string | null>('headline')
-  const dirty = ref(false)
-  const currentDocument = ref<Record<string, unknown> | null>(null)
-  const importStatus = ref<'idle' | 'ready' | 'importing' | 'complete' | 'error'>('idle')
-  const aiStatus = ref<'idle' | 'generating' | 'complete' | 'error'>('idle')
-
-  function setStep(nextStep: BuilderStep) {
-    step.value = nextStep
-  }
-
-  function setActiveViewport(nextViewport: BuilderViewportMode) {
-    activeViewport.value = nextViewport
-  }
-
-  function selectUploadFileType(fileType: BuilderUploadFileType) {
-    selectedUploadFileType.value = fileType
-    step.value = 'file-upload'
-  }
-
-  function selectDesignMethod(method: BuilderDesignMethod) {
-    selectedDesignMethod.value = method
-    step.value = 'ai-design'
-  }
-
-  function startEditor() {
-    step.value = 'editor'
-  }
-
-  function selectElement(elementId: string | null) {
-    selectedElementId.value = elementId
-  }
-
-  function markDirty(value = true) {
-    dirty.value = value
-  }
-
-  function setCurrentDocument(document: Record<string, unknown> | null) {
-    currentDocument.value = document
-  }
+  const stepState = useBuilderStepState()
+  const uploadState = useBuilderUploadState(stepState.step)
+  const designState = useBuilderDesignState(stepState.step)
+  const editorState = useBuilderEditorState()
 
   return {
-    step,
-    activeViewport,
-    selectedUploadFileType,
-    selectedDesignMethod,
-    selectedElementId,
-    dirty,
-    currentDocument,
-    importStatus,
-    aiStatus,
-    setStep,
-    setActiveViewport,
-    selectUploadFileType,
-    selectDesignMethod,
-    startEditor,
-    selectElement,
-    markDirty,
-    setCurrentDocument
+    ...stepState,
+    ...uploadState,
+    ...designState,
+    ...editorState
   }
 })

@@ -1,230 +1,31 @@
-﻿<template>
-  <section v-if="builderStore.step === 'start'" class="creation-start">
-      <div class="creation-intro">
-        <h1>템플릿 생성 방식을 선택해주세요</h1>
-        <p>준비된 시안 파일이 있다면 업로드하고, 아직 시안이 없다면 직접 작성하거나 AI의 도움을 받아 만들어보세요.</p>
-      </div>
-
-      <div class="creation-options">
-        <button class="creation-card" type="button" @click="builderStore.setStep('pdf-image-upload')">
-          <TcubeIcon icon="ri-upload-cloud-2-line" />
-          <strong>디자인 시안 파일 업로드</strong>
-          <span>HTML, PDF, 이미지 파일을 기반으로<br>템플릿을 생성합니다.</span>
-        </button>
-
-        <button class="creation-card" type="button" @click="builderStore.setStep('ai-design')">
-          <TcubeIcon icon="ri-edit-box-line" />
-          <strong>디자인 시안 작성</strong>
-          <span>레이아웃, 기획안 또는 AI 프롬프트를 통해<br>새로운 시안을 작성합니다.</span>
-        </button>
-      </div>
-  </section>
-
-  <section v-else-if="builderStore.step === 'pdf-image-upload'" class="creation-start">
-      <div class="creation-intro">
-        <h1>디자인 시안 파일 유형을 선택해주세요</h1>
-        <p>HTML, 이미지, PDF 파일을 업로드하면 시안의 구조와 디자인 요소를 분석해 템플릿 생성을 시작합니다.</p>
-      </div>
-
-      <div class="upload-options">
-        <button
-          v-for="option in uploadOptions"
-          :key="option.label"
-          class="creation-card upload-card"
-          type="button"
-          @click="builderStore.selectUploadFileType(option.fileType)"
-        >
-          <TcubeIcon :icon="option.icon" />
-          <strong>{{ option.label }}</strong>
-        </button>
-      </div>
-  </section>
-
-  <section v-else-if="builderStore.step === 'file-upload'" class="creation-start file-upload-screen">
-      <div class="creation-intro">
-        <h1>{{ builderStore.selectedUploadFileType }} 파일을 업로드 해주세요</h1>
-      </div>
-
-      <div class="dropzone-wrap">
-        <label class="file-dropzone">
-          <input
-            class="file-input"
-            type="file"
-            :accept="selectedUploadAccept"
-          >
-          <TcubeIcon icon="ri-upload-2-line" />
-          <span>
-            {{ builderStore.selectedUploadFileType }} 파일을 드래그하거나
-            <strong>파일 선택</strong>
-          </span>
-          <small>{{ selectedUploadExtension }} 파일만 업로드 가능합니다</small>
-        </label>
-      </div>
-  </section>
-
-  <section v-else-if="builderStore.step === 'ai-design'" class="creation-start">
-      <div class="creation-intro">
-        <h1>시안 작성 방식을 선택해주세요</h1>
-        <p>템플릿 생성에 사용할 디자인 시안을 직접 만들거나 AI로 생성해주세요.</p>
-      </div>
-
-      <div class="creation-options">
-        <button
-          v-for="option in designOptions"
-          :key="option.label"
-          class="creation-card"
-          type="button"
-          @click="builderStore.selectDesignMethod(option.method)"
-        >
-          <TcubeIcon :icon="option.icon" />
-          <strong>{{ option.label }}</strong>
-          <span>{{ option.description }}</span>
-        </button>
-      </div>
-  </section>
-
-  <section v-else-if="builderStore.step === 'editor'" class="template-list-screen">
-      <div class="template-list-header">
-        <span class="section-title">SAVED TEMPLATES</span>
-        <h1>수정할 템플릿을 선택해주세요</h1>
-      </div>
-
-      <div class="template-grid">
-        <article
-          v-for="template in savedTemplates"
-          :key="template.id"
-          class="template-card"
-        >
-          <div class="template-preview">
-            <span :class="['template-badge', template.badgeClass]">{{ template.badge }}</span>
-            <TcubeIcon :icon="template.icon" />
-          </div>
-
-          <div class="template-info">
-            <strong>{{ template.name }}</strong>
-            <span>{{ template.description }}</span>
-          </div>
-
-          <div class="template-meta">
-            <span>{{ template.size }}</span>
-            <span>{{ template.updatedAt }}</span>
-          </div>
-
-          <button class="template-action" type="button">
-            <TcubeIcon icon="ri-edit-line" />
-            <span>수정하기</span>
-          </button>
-        </article>
-      </div>
-  </section>
+<template>
+  <CreateTemplateStart v-if="builderStore.step === 'start'" />
+  <CreateTemplateSelectFileType v-else-if="builderStore.step === 'pdf-image-upload'" />
+  <CreateTemplateUploadFile v-else-if="builderStore.step === 'file-upload'" />
+  <CreateTemplateHowToMakeDesign v-else-if="builderStore.step === 'ai-design'" />
+  <EditTemplateSelectTemplate v-else-if="builderStore.step === 'editor'" />
 
   <div v-else class="body-placeholder">
-      <span class="section-title">WORKSPACE</span>
-      <h1>{{ stageTitle }}</h1>
-      <p>{{ stageSubtitle }}</p>
+    <span class="section-title">WORKSPACE</span>
+    <h1>{{ stageTitle }}</h1>
+    <p>{{ stageSubtitle }}</p>
   </div>
 </template>
 
 <script setup lang="ts">
+import CreateTemplateHowToMakeDesign from './steps/create-template/HowToMakeDesign.vue'
+import CreateTemplateSelectFileType from './steps/create-template/SelectFileType.vue'
+import CreateTemplateStart from './steps/create-template/Start.vue'
+import CreateTemplateUploadFile from './steps/create-template/UploadFile.vue'
+import EditTemplateSelectTemplate from './steps/edit-template/SelectTemplate.vue'
 import { useBuilderStore } from '~/stores/builder'
 
 const builderStore = useBuilderStore()
+const activePage = {
+  width: 960,
+  height: 540
+}
 
-const pages = [
-  { id: 'page-home', name: 'Main canvas', width: 960, height: 540 }
-]
-
-const uploadOptions = [
-  {
-    label: 'HTML 업로드',
-    fileType: 'HTML',
-    icon: 'ri-html5-line'
-  },
-  {
-    label: '이미지 업로드',
-    fileType: '이미지',
-    icon: 'ri-image-line'
-  },
-  {
-    label: 'PDF 업로드',
-    fileType: 'PDF',
-    icon: 'ri-file-pdf-2-line'
-  }
-] as const
-
-const designOptions = [
-  {
-    label: '레이아웃 작성',
-    description: '화면 구조와 콘텐츠 배치를 직접 입력합니다.',
-    method: 'layout',
-    icon: 'ri-layout-2-line'
-  },
-  {
-    label: 'AI 프롬프트 작성',
-    description: '프롬프트를 입력해 디자인 시안 초안을 생성합니다.',
-    method: 'ai-prompt',
-    icon: 'ri-sparkling-2-line'
-  }
-] as const
-
-const savedTemplates = [
-  {
-    id: 'template-summer-sale',
-    name: '여름 프로모션 배너',
-    description: '메인 랜딩 상단에 사용하는 시즌 프로모션 템플릿',
-    size: 'PC / Mobile',
-    updatedAt: '2026.07.01',
-    badge: 'Banner',
-    badgeClass: 'purple',
-    icon: 'ri-layout-top-line'
-  },
-  {
-    id: 'template-event-bridge',
-    name: '이벤트 브릿지 페이지',
-    description: '캠페인 안내와 CTA 영역이 포함된 브릿지 페이지',
-    size: 'PC',
-    updatedAt: '2026.06.28',
-    badge: 'Page',
-    badgeClass: 'green',
-    icon: 'ri-pages-line'
-  },
-  {
-    id: 'template-product-card',
-    name: '상품 소개 카드',
-    description: '상품 이미지와 핵심 문구를 강조하는 카드형 템플릿',
-    size: 'Tablet / Mobile',
-    updatedAt: '2026.06.20',
-    badge: 'Card',
-    badgeClass: 'orange',
-    icon: 'ri-bank-card-line'
-  },
-  {
-    id: 'template-newsletter',
-    name: '뉴스레터 파셜 HTML',
-    description: 'CMS 본문에 삽입 가능한 뉴스레터 섹션 템플릿',
-    size: 'Responsive',
-    updatedAt: '2026.06.14',
-    badge: 'HTML',
-    badgeClass: 'blue',
-    icon: 'ri-html5-line'
-  }
-]
-
-const activePageId = ref(pages[0].id)
-
-const activePage = computed(() => pages.find((page) => page.id === activePageId.value))
-const selectedUploadAccept = computed(() => {
-  if (builderStore.selectedUploadFileType === 'HTML') return '.html,.htm,text/html'
-  if (builderStore.selectedUploadFileType === '이미지') return 'image/*'
-
-  return '.pdf,application/pdf'
-})
-const selectedUploadExtension = computed(() => {
-  if (builderStore.selectedUploadFileType === 'HTML') return '.html'
-  if (builderStore.selectedUploadFileType === '이미지') return '이미지'
-
-  return '.pdf'
-})
 const stageTitle = computed(() => {
   if (builderStore.step === 'editor') return '템플릿 수정'
   if (builderStore.step === 'preview') return '미리보기'
@@ -233,15 +34,15 @@ const stageTitle = computed(() => {
 })
 
 const stageSubtitle = computed(() => {
-  if (builderStore.step === 'editor' && activePage.value) {
-    return `${activePage.value.width} x ${activePage.value.height}`
+  if (builderStore.step === 'editor') {
+    return `${activePage.width} x ${activePage.height}`
   }
 
   return '바디 영역은 다음 단계에서 정리합니다.'
 })
 </script>
 
-<style scoped>
+<style>
 * {
   box-sizing: border-box;
 }
@@ -281,20 +82,21 @@ const stageSubtitle = computed(() => {
   font-weight: 600;
 }
 
-.creation-options {
-  justify-self: center;
-  margin-top: 40px;
-  width: min(1080px, 100%);
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 28px;
-}
-
+.creation-options,
 .upload-options {
   justify-self: center;
   margin-top: 40px;
-  width: min(1180px, 100%);
   display: grid;
+  gap: 28px;
+}
+
+.creation-options {
+  width: min(1080px, 100%);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.upload-options {
+  width: min(1180px, 100%);
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
 }
@@ -359,6 +161,8 @@ const stageSubtitle = computed(() => {
   justify-self: center;
   margin-top: 36px;
   width: min(1120px, 100%);
+  display: grid;
+  gap: 14px;
 }
 
 .file-dropzone {
@@ -372,12 +176,22 @@ const stageSubtitle = computed(() => {
   background: rgba(255, 255, 255, 0.02);
   color: var(--text-secondary);
   padding: 96px 24px;
+  text-align: center;
   cursor: pointer;
 }
 
-.file-dropzone:hover {
+.file-dropzone:hover,
+.file-dropzone.dragging {
   background: rgba(139, 145, 255, 0.07);
   border-color: var(--accent);
+}
+
+.file-dropzone.ready {
+  border-color: rgba(105, 220, 160, 0.7);
+}
+
+.file-dropzone.error {
+  border-color: rgba(255, 107, 129, 0.76);
 }
 
 .file-dropzone > i {
@@ -385,16 +199,26 @@ const stageSubtitle = computed(() => {
   font-size: 66px;
 }
 
+.file-dropzone.ready > i {
+  color: #69dca0;
+}
+
 .file-dropzone span {
+  max-width: 720px;
   color: var(--text-secondary);
   font-size: 21px;
   line-height: 1.4;
   font-weight: 600;
+  word-break: break-all;
 }
 
 .file-dropzone span strong {
   color: var(--accent-3);
   font-weight: 900;
+}
+
+.file-dropzone.ready span strong {
+  color: var(--text-strong);
 }
 
 .file-dropzone small {
@@ -413,7 +237,64 @@ const stageSubtitle = computed(() => {
   pointer-events: none;
 }
 
-.template-list-screen {
+.upload-message {
+  min-height: 20px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 700;
+  text-align: center;
+}
+
+.upload-message.error {
+  color: #ff8aa0;
+}
+
+.upload-message.success {
+  color: #8ce0b1;
+}
+
+.upload-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.primary-action,
+.secondary-action {
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 10px;
+  padding: 0 16px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.primary-action {
+  border: 0;
+  background: var(--accent-3);
+  color: #ffffff;
+}
+
+.secondary-action {
+  border: 1px solid rgba(174, 183, 232, 0.18);
+  background: rgba(255, 255, 255, 0.055);
+  color: var(--text-primary);
+}
+
+.primary-action:disabled,
+.secondary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.44;
+}
+
+.template-list-screen,
+.body-placeholder {
   min-height: calc(100vh - 142px);
   border: 1px solid rgba(174, 183, 232, 0.1);
   border-radius: 14px;
@@ -426,20 +307,13 @@ const stageSubtitle = computed(() => {
   margin-bottom: 24px;
 }
 
-.template-list-header h1 {
+.template-list-header h1,
+.body-placeholder h1 {
   margin: 0;
   color: var(--text-strong);
   font-size: 31px;
   line-height: 1.2;
   font-weight: 900;
-}
-
-.template-list-header p {
-  margin: 12px 0 0;
-  color: var(--text-secondary);
-  font-size: 14px;
-  line-height: 1.55;
-  font-weight: 600;
 }
 
 .template-grid {
@@ -521,7 +395,8 @@ const stageSubtitle = computed(() => {
   font-weight: 900;
 }
 
-.template-info span {
+.template-info span,
+.body-placeholder p {
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.45;
@@ -561,15 +436,6 @@ const stageSubtitle = computed(() => {
   color: #ffffff;
 }
 
-.body-placeholder {
-  min-height: calc(100vh - 142px);
-  border: 1px solid rgba(174, 183, 232, 0.1);
-  border-radius: 14px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.035));
-  padding: 28px;
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18);
-}
-
 .section-title {
   display: block;
   margin-bottom: 14px;
@@ -579,19 +445,9 @@ const stageSubtitle = computed(() => {
   letter-spacing: 1.8px;
 }
 
-.body-placeholder h1 {
-  margin: 0;
-  color: var(--text-strong);
-  font-size: 31px;
-  line-height: 1;
-  font-weight: 900;
-}
-
 .body-placeholder p {
   margin: 12px 0 0;
-  color: var(--text-secondary);
   font-size: 13px;
-  font-weight: 600;
 }
 
 @media (max-width: 1100px) {
@@ -646,10 +502,7 @@ const stageSubtitle = computed(() => {
     font-size: 28px;
   }
 
-  .creation-options {
-    grid-template-columns: 1fr;
-  }
-
+  .creation-options,
   .upload-options {
     grid-template-columns: 1fr;
   }
@@ -682,26 +535,28 @@ const stageSubtitle = computed(() => {
     font-size: 17px;
   }
 
-  .file-dropzone small {
+  .file-dropzone small,
+  .upload-message {
     font-size: 13px;
   }
 
-  .template-list-screen {
+  .upload-actions {
+    flex-direction: column;
+  }
+
+  .template-list-screen,
+  .body-placeholder {
     min-height: 420px;
     padding: 22px;
   }
 
-  .template-list-header h1 {
+  .template-list-header h1,
+  .body-placeholder h1 {
     font-size: 28px;
   }
 
   .template-grid {
     grid-template-columns: 1fr;
   }
-
-  .body-placeholder {
-    min-height: 420px;
-  }
 }
 </style>
-
