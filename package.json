@@ -1,0 +1,25 @@
+{
+  "name": "t-cube",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@vueuse/core": "^14.3.0",
+    "pinia": "^3.0.4",
+    "remixicon": "^4.9.1",
+    "vue": "^3.5.39",
+    "vue-router": "^5.1.0"
+  },
+  "devDependencies": {
+    "@pinia/nuxt": "^0.11.3",
+    "@vueuse/nuxt": "^14.3.0",
+    "cross-env": "^10.1.0",
+    "nuxt": "^3.21.8"
+  }
+}
