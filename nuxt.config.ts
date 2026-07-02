@@ -24,6 +24,7 @@ export default defineNuxtConfig({
     }
   ],
   css: [
+    '~/assets/styles/common.css',
     'remixicon/fonts/remixicon.css'
   ]
 })
