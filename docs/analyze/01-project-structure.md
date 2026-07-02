@@ -139,7 +139,77 @@ root
    └─ 파일, DOM, id, 좌표 계산 등 범용 유틸
 ```
 
-## 6. 레이어별 책임
+## 6. 라우팅과 화면 전환 전략
+
+웹컴포넌트 SDK 또는 iframe 연동 가능성을 고려하면, 빌더 내부 화면 전환은 Nuxt page routing에 강하게 의존하지 않는 것이 좋다.
+
+초기 구조에서는 `pages/index.vue`를 빌더 진입점으로 두고, 실제 화면 전환은 `BuilderApp` 내부 상태 또는 Pinia store의 `step` 값으로 제어한다.
+
+```txt
+pages/
+  index.vue
+```
+
+```vue
+<template>
+  <BuilderApp />
+</template>
+```
+
+빌더 내부 단계는 URL이 아니라 상태로 관리한다.
+
+```ts
+type BuilderStep =
+  | 'start'
+  | 'html-upload'
+  | 'pdf-image-upload'
+  | 'ai-design'
+  | 'editor'
+  | 'preview'
+```
+
+예상 흐름:
+
+```txt
+start
+→ html-upload
+→ editor
+→ preview
+→ save
+```
+
+이 구조를 사용하면 같은 `BuilderApp`을 Nuxt 단독 페이지, iframe, web component에서 모두 재사용할 수 있다.
+
+```txt
+Nuxt 단독 실행
+pages/index.vue → BuilderApp
+
+iframe 방식
+iframe page → BuilderApp
+
+web component 방식
+<t-cube-builder> → BuilderApp
+```
+
+Pinia store는 모든 UI 상태를 넣는 곳이 아니라, 여러 화면과 컴포넌트가 공유해야 하는 상태를 관리하는 곳으로 사용한다.
+
+store에 두기 좋은 상태:
+
+- 현재 step
+- 현재 TemplateDocument
+- 선택된 element id
+- 업로드/import 상태
+- AI 생성 상태
+- 편집 dirty 여부
+
+컴포넌트 내부에 둬도 되는 상태:
+
+- hover 상태
+- 드롭다운 열림 여부
+- 작은 form 입력값
+- 일시적인 버튼 토글 상태
+
+## 7. 레이어별 책임
 
 ### pages
 
@@ -201,7 +271,7 @@ Vue와 무관한 순수 처리 로직을 담당한다.
 
 중요한 점은 `BuilderApp`이 CMS, iframe, web component를 직접 알면 안 된다는 것이다. 외부 연동은 adapter 레이어에 둔다.
 
-## 7. 내부 템플릿 모델
+## 8. 내부 템플릿 모델
 
 초기 모델은 너무 복잡하게 시작하지 않고, 텍스트/이미지/도형/컨테이너 중심으로 설계한다.
 
@@ -246,7 +316,7 @@ export type TemplateAsset = {
 }
 ```
 
-## 8. 저장 인터페이스
+## 9. 저장 인터페이스
 
 CMS 연동 구현은 나중에 하더라도 저장 payload의 모양은 초기에 정해야 한다.
 
@@ -269,7 +339,7 @@ function handleSave() {
 
 초기 구현에서는 이 payload를 JSON preview, console output, file download 등으로 확인하면 된다.
 
-## 9. 현재 단계의 구현 우선순위
+## 10. 현재 단계의 구현 우선순위
 
 ```txt
 1. BuilderApp 기본 레이아웃 구성
@@ -291,7 +361,7 @@ HTML / PDF / Image / AI
 
 CMS로 실제 저장하는 과정은 후순위로 둔다. 초기 구현에서는 JSON Preview 또는 Download 수준으로 결과를 확인한다.
 
-## 10. 주의할 점
+## 11. 주의할 점
 
 - 원본 HTML을 그대로 편집 대상으로 삼지 않는다.
 - 모든 입력은 내부 표준 모델인 `TemplateDocument`로 변환한다.
