@@ -72,6 +72,11 @@ export function useBuilderUploadState(step: Ref<BuilderStep>) {
     importStatus.value = 'error'
   }
 
+  function cancelFileAnalysis() {
+    uploadError.value = ''
+    importStatus.value = uploadedFile.value ? 'ready' : 'idle'
+  }
+
   function validateUploadFile(file: File) {
     const extension = getFileExtension(file.name)
     const mimeType = file.type.toLowerCase()
@@ -107,6 +112,7 @@ export function useBuilderUploadState(step: Ref<BuilderStep>) {
     clearUploadedFile,
     startFileAnalysis,
     completeFileAnalysis,
-    failFileAnalysis
+    failFileAnalysis,
+    cancelFileAnalysis
   }
 }

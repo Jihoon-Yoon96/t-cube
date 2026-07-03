@@ -8,17 +8,21 @@
       </div>
 
       <div class="image-design-preview-actions">
-        <button class="secondary-action" type="button" @click="builderStore.setStep('file-upload')">
+        <button class="secondary-action" type="button" @click="handleSelectFileAgain">
           <TcubeIcon icon="ri-arrow-left-line" />
           <span>파일 다시 선택</span>
         </button>
         <button
           class="primary-action"
+          :class="{ 'is-loading': builderStore.importStatus === 'importing' }"
           type="button"
           :disabled="builderStore.importStatus === 'importing'"
           @click="handleGenerateHtml"
         >
-          <TcubeIcon icon="ri-code-s-slash-line" />
+          <TcubeIcon
+            :class="{ 'rotating-icon': builderStore.importStatus === 'importing' }"
+            :icon="builderStore.importStatus === 'importing' ? 'ri-loader-4-line' : 'ri-code-s-slash-line'"
+          />
           <span>{{ generateButtonLabel }}</span>
         </button>
       </div>
@@ -75,9 +79,13 @@ const builderStore = useBuilderStore()
 const imageUrl = ref('')
 const imageWidth = ref(0)
 const imageHeight = ref(0)
+const generationElapsedSeconds = ref(0)
+let generationTimerId: ReturnType<typeof setInterval> | null = null
 
 const generateButtonLabel = computed(() => {
-  if (builderStore.importStatus === 'importing') return 'HTML 생성 중'
+  if (builderStore.importStatus === 'importing') {
+    return `HTML 생성 중 ${generationElapsedSeconds.value}s`
+  }
 
   return 'HTML 생성'
 })
@@ -143,6 +151,37 @@ function handleGenerateHtml() {
 }
 
 /**
+ * HTML 생성 요청이 진행 중이면 취소한 뒤 파일 업로드 단계로 이동
+ */
+function handleSelectFileAgain() {
+  builderStore.cancelImageHtmlGeneration()
+  builderStore.setStep('file-upload')
+}
+
+/**
+ * HTML 생성 응답을 기다리는 동안 버튼에 표시할 경과 시간을 1초 단위로 갱신
+ */
+function startGenerationTimer() {
+  stopGenerationTimer()
+  generationElapsedSeconds.value = 0
+  generationTimerId = setInterval(() => {
+    generationElapsedSeconds.value += 1
+  }, 1000)
+}
+
+/**
+ * HTML 생성 대기 시간 타이머를 정리하고 경과 시간을 초기화
+ */
+function stopGenerationTimer() {
+  if (generationTimerId) {
+    clearInterval(generationTimerId)
+    generationTimerId = null
+  }
+
+  generationElapsedSeconds.value = 0
+}
+
+/**
  * 파일 크기를 UI에 표시하기 쉬운 단위 문자열로 변환
  *
  * @param size 바이트 단위의 파일 크기
@@ -164,11 +203,48 @@ watch(
   }
 )
 
+watch(
+  () => builderStore.importStatus,
+  (status) => {
+    if (status === 'importing') {
+      startGenerationTimer()
+      return
+    }
+
+    stopGenerationTimer()
+  }
+)
+
 onMounted(() => {
   createImagePreviewUrl()
 })
 
 onBeforeUnmount(() => {
+  if (builderStore.importStatus === 'importing') {
+    builderStore.cancelImageHtmlGeneration()
+  }
+
+  stopGenerationTimer()
   revokeImagePreviewUrl()
 })
 </script>
+
+<style scoped>
+.primary-action.is-loading {
+  cursor: progress;
+}
+
+.rotating-icon {
+  animation: html-generation-spin 0.8s linear infinite;
+}
+
+@keyframes html-generation-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+</style>

@@ -27,6 +27,7 @@ export const useBuilderStore = defineStore('builder', () => {
   const uploadState = useBuilderUploadState(stepState.step)
   const designState = useBuilderDesignState(stepState.step)
   const editorState = useBuilderEditorState()
+  const imageHtmlGenerationAbortController = shallowRef<AbortController | null>(null)
 
   async function startFileAnalysis() {
     if (!uploadState.startFileAnalysis()) return
@@ -72,7 +73,11 @@ export const useBuilderStore = defineStore('builder', () => {
       return
     }
 
+    cancelImageHtmlGeneration()
     uploadState.startFileAnalysis()
+
+    const abortController = new AbortController()
+    imageHtmlGenerationAbortController.value = abortController
 
     try {
       const formData = new FormData()
@@ -80,7 +85,8 @@ export const useBuilderStore = defineStore('builder', () => {
 
       const response = await $fetch<ImageToHtmlResponse>('/api/builder/image-to-html', {
         method: 'POST',
-        body: formData
+        body: formData,
+        signal: abortController.signal
       })
 
       const parsedDocument = parseHtmlDocument(response.html, {
@@ -92,12 +98,38 @@ export const useBuilderStore = defineStore('builder', () => {
       uploadState.completeFileAnalysis()
       stepState.setStep('html-editor')
     } catch (error) {
+      if (isAbortError(error)) {
+        uploadState.cancelFileAnalysis()
+        return
+      }
+
       const message = error instanceof Error
         ? error.message
         : '이미지 기반 HTML을 생성하는 중 문제가 발생했습니다.'
 
       uploadState.failFileAnalysis(message)
+    } finally {
+      if (imageHtmlGenerationAbortController.value === abortController) {
+        imageHtmlGenerationAbortController.value = null
+      }
     }
+  }
+
+  function cancelImageHtmlGeneration() {
+    if (!imageHtmlGenerationAbortController.value) return
+
+    imageHtmlGenerationAbortController.value.abort()
+    imageHtmlGenerationAbortController.value = null
+    uploadState.cancelFileAnalysis()
+  }
+
+  function isAbortError(error: unknown) {
+    if (!error || typeof error !== 'object') return false
+
+    const name = (error as { name?: unknown }).name
+    const message = (error as { message?: unknown }).message
+
+    return name === 'AbortError' || message === 'This operation was aborted'
   }
 
   return {
@@ -106,6 +138,7 @@ export const useBuilderStore = defineStore('builder', () => {
     ...designState,
     ...editorState,
     startFileAnalysis,
-    generateHtmlFromUploadedImage
+    generateHtmlFromUploadedImage,
+    cancelImageHtmlGeneration
   }
 })
