@@ -1,7 +1,7 @@
 import { generateHtmlFromImageDesign } from '~/server/services/builder/imageToHtml'
-import type { ImageToHtmlResponse } from '~/types/builder/image-to-html'
+import type { DesignToHtmlResponse } from '~/types/builder/design-to-html'
 
-export default defineEventHandler(async (event): Promise<ImageToHtmlResponse> => {
+export default defineEventHandler(async (event): Promise<DesignToHtmlResponse> => {
   const formData = await readMultipartFormData(event)
   const imageFile = formData?.find((item) => item.name === 'image')
 
