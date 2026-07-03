@@ -154,8 +154,19 @@ function handleGenerateHtml() {
  * HTML 생성 요청이 진행 중이면 취소한 뒤 파일 업로드 단계로 이동
  */
 function handleSelectFileAgain() {
-  builderStore.cancelImageHtmlGeneration()
   builderStore.setStep('file-upload')
+}
+
+/**
+ * 브라우저 새로고침/탭 닫기 시 생성 중인 요청이 있으면 기본 이탈 확인창을 표시
+ *
+ * @param event 브라우저 이탈 직전에 발생하는 beforeunload 이벤트
+ */
+function handleBeforeUnload(event: BeforeUnloadEvent) {
+  if (builderStore.importStatus !== 'importing') return
+
+  event.preventDefault()
+  event.returnValue = ''
 }
 
 /**
@@ -217,15 +228,30 @@ watch(
 
 onMounted(() => {
   createImagePreviewUrl()
+  window.addEventListener('beforeunload', handleBeforeUnload)
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+
   if (builderStore.importStatus === 'importing') {
     builderStore.cancelImageHtmlGeneration()
   }
 
   stopGenerationTimer()
   revokeImagePreviewUrl()
+})
+
+onBeforeRouteLeave(() => {
+  if (builderStore.importStatus !== 'importing') return true
+
+  const confirmed = window.confirm('AI가 HTML을 생성 중입니다. 정말 나가시겠습니까?')
+
+  if (confirmed) {
+    builderStore.cancelImageHtmlGeneration()
+  }
+
+  return confirmed
 })
 </script>
 

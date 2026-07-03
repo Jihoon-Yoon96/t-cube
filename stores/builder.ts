@@ -7,6 +7,7 @@ import { useBuilderEditorState } from './builder/editor'
 import { useBuilderStepState } from './builder/step'
 import { useBuilderUploadState } from './builder/upload'
 import { parseHtmlDocument, parseHtmlFile } from '~/services/html/parseHtmlDocument'
+import type { BuilderDesignMethod, BuilderStep, BuilderUploadFileType } from './builder/type/types'
 import type { ImageToHtmlResponse } from '~/types/builder/image-to-html'
 
 export type {
@@ -123,6 +124,41 @@ export const useBuilderStore = defineStore('builder', () => {
     uploadState.cancelFileAnalysis()
   }
 
+  function setStep(nextStep: BuilderStep) {
+    if (nextStep === stepState.step.value) return true
+    if (!confirmImageHtmlGenerationLeave()) return false
+
+    stepState.setStep(nextStep)
+    return true
+  }
+
+  function selectUploadFileType(fileType: BuilderUploadFileType) {
+    if (!confirmImageHtmlGenerationLeave()) return false
+
+    uploadState.selectUploadFileType(fileType)
+    return true
+  }
+
+  function selectDesignMethod(method: BuilderDesignMethod) {
+    if (!confirmImageHtmlGenerationLeave()) return false
+
+    designState.selectDesignMethod(method)
+    return true
+  }
+
+  function confirmImageHtmlGenerationLeave() {
+    if (uploadState.importStatus.value !== 'importing') return true
+    if (import.meta.server) return true
+
+    const confirmed = window.confirm('AI가 HTML을 생성 중입니다. 정말 나가시겠습니까?')
+
+    if (confirmed) {
+      cancelImageHtmlGeneration()
+    }
+
+    return confirmed
+  }
+
   function isAbortError(error: unknown) {
     if (!error || typeof error !== 'object') return false
 
@@ -137,6 +173,9 @@ export const useBuilderStore = defineStore('builder', () => {
     ...uploadState,
     ...designState,
     ...editorState,
+    setStep,
+    selectUploadFileType,
+    selectDesignMethod,
     startFileAnalysis,
     generateHtmlFromUploadedImage,
     cancelImageHtmlGeneration
