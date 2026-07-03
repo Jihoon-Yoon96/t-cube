@@ -1,4 +1,4 @@
-export type ParsedHtmlElementType = 'text' | 'image'
+export type ParsedHtmlElementType = 'text' | 'image' | 'link'
 
 export type ParsedHtmlEditableElement = {
   id: string
@@ -77,6 +77,7 @@ export function parseHtmlDocument(html: string, options: ParseHtmlDocumentOption
   const root = document.body || document.documentElement
   const textElements = extractTextElements(root)
   const imageElements = extractImageElements(root)
+  const linkElements = extractLinkElements(root, [...textElements, ...imageElements])
   const sourceName = options.sourceName || 'HTML 문서'
 
   return {
@@ -84,7 +85,7 @@ export function parseHtmlDocument(html: string, options: ParseHtmlDocumentOption
     title: normalizeText(document.title) || sourceName,
     sourceName,
     rawHtml: html,
-    elements: [...textElements, ...imageElements]
+    elements: [...textElements, ...imageElements, ...linkElements]
   }
 }
 
@@ -124,6 +125,18 @@ export function renderEditableHtmlDocument(document: ParsedHtmlDocument) {
       if (editableElement.alt !== editableElement.originalAlt) {
         element.alt = editableElement.alt || ''
       }
+      if (editableElement.href !== editableElement.originalHref) {
+        const linkElement = element.closest('a')
+        if (linkElement) {
+          linkElement.href = editableElement.href || '#'
+        }
+      }
+    }
+
+    if (editableElement.type === 'link' && element instanceof HTMLAnchorElement) {
+      if (editableElement.href !== editableElement.originalHref) {
+        element.href = editableElement.href || '#'
+      }
     }
   })
 
@@ -155,19 +168,42 @@ function extractTextElements(root: HTMLElement): ParsedHtmlEditableElement[] {
     .slice(0, MAX_TEXT_ELEMENT_COUNT)
 }
 
-function extractImageElements(root: HTMLElement): ParsedHtmlEditableElement[] {
-  return Array.from(root.querySelectorAll<HTMLImageElement>('img'))
+function extractLinkElements(root: HTMLElement, existingElements: ParsedHtmlEditableElement[]): ParsedHtmlEditableElement[] {
+  const existingSelectors = new Set(existingElements.map((element) => element.selector))
+
+  return Array.from(root.querySelectorAll<HTMLAnchorElement>('a[href]'))
+    .filter((element) => !existingSelectors.has(createElementSelector(element)))
     .map((element, index) => ({
-      id: createElementId('image', index, element.currentSrc || element.src || element.alt || ''),
-      type: 'image' as const,
+      id: createElementId('link', index, element.getAttribute('href') || ''),
+      type: 'link' as const,
       label: createElementLabel(element, index),
       tagName: element.tagName.toLowerCase(),
       selector: createElementSelector(element),
-      src: element.getAttribute('src') || '',
-      originalSrc: element.getAttribute('src') || '',
-      alt: element.getAttribute('alt') || '',
-      originalAlt: element.getAttribute('alt') || ''
+      href: element.getAttribute('href') || '',
+      originalHref: element.getAttribute('href') || ''
     }))
+}
+
+function extractImageElements(root: HTMLElement): ParsedHtmlEditableElement[] {
+  return Array.from(root.querySelectorAll<HTMLImageElement>('img'))
+    .map((element, index) => {
+      const linkElement = element.closest('a')
+      const href = linkElement?.getAttribute('href')
+
+      return {
+        id: createElementId('image', index, element.currentSrc || element.src || element.alt || ''),
+        type: 'image' as const,
+        label: createElementLabel(element, index),
+        tagName: element.tagName.toLowerCase(),
+        selector: createElementSelector(element),
+        src: element.getAttribute('src') || '',
+        originalSrc: element.getAttribute('src') || '',
+        alt: element.getAttribute('alt') || '',
+        originalAlt: element.getAttribute('alt') || '',
+        href: href === null ? undefined : href,
+        originalHref: href === null ? undefined : href
+      }
+    })
     .slice(0, MAX_IMAGE_ELEMENT_COUNT)
 }
 
@@ -200,6 +236,10 @@ function normalizeText(value: string) {
 }
 
 function getEditableTextContent(element: HTMLElement) {
+  if (element instanceof HTMLAnchorElement && !isTextEditableAnchor(element)) {
+    return ''
+  }
+
   const directText = Array.from(element.childNodes)
     .filter((node) => node.nodeType === Node.TEXT_NODE)
     .map((node) => node.textContent || '')
@@ -214,6 +254,24 @@ function getEditableTextContent(element: HTMLElement) {
   }
 
   return ''
+}
+
+function isTextEditableAnchor(element: HTMLAnchorElement) {
+  if (element.querySelector('img, picture, svg, video, table')) return false
+  if (element.querySelectorAll('div').length > 1) return false
+
+  const elementChildren = Array.from(element.children)
+
+  if (elementChildren.length === 0) return true
+  if (elementChildren.length > 2) return false
+
+  return elementChildren.every((child) => {
+    const tagName = child.tagName.toLowerCase()
+    if (!['span', 'strong', 'em', 'b', 'i', 'small', 'div'].includes(tagName)) return false
+    if (child.querySelector('img, picture, svg, video, table, div')) return false
+
+    return Boolean(normalizeText(child.textContent || ''))
+  })
 }
 
 function createElementId(...parts: Array<string | number>) {

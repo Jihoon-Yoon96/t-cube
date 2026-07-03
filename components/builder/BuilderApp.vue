@@ -315,6 +315,15 @@ const stageSubtitle = computed(() => {
   grid-template-columns: 280px minmax(0, 1fr);
 }
 
+.html-image-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .html-editor-panel,
 .html-editor-preview {
   border: 1px solid rgba(174, 183, 232, 0.1);
