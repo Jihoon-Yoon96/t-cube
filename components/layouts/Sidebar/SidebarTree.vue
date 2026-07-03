@@ -44,7 +44,7 @@ const uploadStepItems = computed(() => [
   },
   {
     label: 'PDF 업로드',
-    active: builderStore.step === 'file-upload' && builderStore.selectedUploadFileType === 'PDF',
+    active: ['file-upload', 'pdf-preview'].includes(builderStore.step) && builderStore.selectedUploadFileType === 'PDF',
     depth: 2,
     last: false,
     onClick: () => builderStore.selectUploadFileType('PDF')
@@ -108,7 +108,12 @@ const createStepItems = computed(() => {
     ]
   }
 
-  if (builderStore.step === 'file-upload' || builderStore.step === 'html-editor' || builderStore.step === 'image-preview') {
+  if (
+    builderStore.step === 'file-upload'
+    || builderStore.step === 'html-editor'
+    || builderStore.step === 'image-preview'
+    || builderStore.step === 'pdf-preview'
+  ) {
     return [
       {
         label: '파일 업로드',

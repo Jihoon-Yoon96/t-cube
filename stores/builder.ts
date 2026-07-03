@@ -38,6 +38,12 @@ export const useBuilderStore = defineStore('builder', () => {
       return
     }
 
+    if (uploadState.selectedUploadFileType.value === 'PDF') {
+      uploadState.completeFileAnalysis()
+      stepState.setStep('pdf-preview')
+      return
+    }
+
     if (uploadState.selectedUploadFileType.value !== 'HTML') {
       uploadState.failFileAnalysis('현재 편집 기능은 HTML 파일부터 지원합니다. 이미지/PDF 분석은 다음 단계에서 연결할 예정입니다.')
       return

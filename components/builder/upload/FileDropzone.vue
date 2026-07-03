@@ -199,16 +199,14 @@ function handleDrop(event: DragEvent) {
 }
 
 /**
- * 선택된 파일을 업로드 검증 흐름으로 전달하고, 이미지 파일이면 미리보기 단계로 바로 이동
+ * 선택된 파일을 업로드 검증 흐름으로 전달하고, 업로드 성공 시 다음 단계로 바로 이동
  *
  * @param file 사용자가 선택하거나 드롭한 로컬 파일
  */
 function handleSelectedFile(file: File) {
   const isUploaded = builderStore.uploadDesignFile(file)
 
-  if (isUploaded && builderStore.selectedUploadFileType === '이미지') {
-    builderStore.startFileAnalysis()
-  }
+  if (isUploaded) builderStore.startFileAnalysis()
 }
 
 /**

@@ -3,6 +3,7 @@
   <CreateTemplateSelectFileType v-else-if="builderStore.step === 'pdf-image-upload'" />
   <CreateTemplateUploadFile v-else-if="builderStore.step === 'file-upload'" />
   <CreateTemplateImageDesignPreview v-else-if="builderStore.step === 'image-preview'" />
+  <CreateTemplatePdfDesignPreview v-else-if="builderStore.step === 'pdf-preview'" />
   <CreateTemplateHowToMakeDesign v-else-if="builderStore.step === 'ai-design'" />
   <CreateTemplateHtmlDocumentEditor v-else-if="builderStore.step === 'html-editor'" />
   <EditTemplateSelectTemplate v-else-if="builderStore.step === 'editor'" />
@@ -18,6 +19,7 @@
 import CreateTemplateHowToMakeDesign from './steps/create-template/HowToMakeDesign.vue'
 import CreateTemplateHtmlDocumentEditor from './steps/create-template/HtmlDocumentEditor.vue'
 import CreateTemplateImageDesignPreview from './steps/create-template/ImageDesignPreview.vue'
+import CreateTemplatePdfDesignPreview from './steps/create-template/PdfDesignPreview.vue'
 import CreateTemplateSelectFileType from './steps/create-template/SelectFileType.vue'
 import CreateTemplateStart from './steps/create-template/Start.vue'
 import CreateTemplateUploadFile from './steps/create-template/UploadFile.vue'
@@ -649,6 +651,15 @@ const stageSubtitle = computed(() => {
   box-shadow: 0 18px 38px rgba(0, 0, 0, 0.28);
 }
 
+.pdf-design-preview-canvas iframe {
+  width: 100%;
+  min-height: calc(100vh - 300px);
+  border: 1px solid rgba(174, 183, 232, 0.18);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.28);
+}
+
 .image-design-preview-info {
   align-self: start;
   display: grid;
@@ -976,6 +987,10 @@ const stageSubtitle = computed(() => {
 
   .image-design-preview-canvas img {
     max-height: 420px;
+  }
+
+  .pdf-design-preview-canvas iframe {
+    min-height: 420px;
   }
 
   .html-editor-layout {
