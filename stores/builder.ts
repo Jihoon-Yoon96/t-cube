@@ -7,11 +7,7 @@ import { useBuilderEditorState } from './builder/editor'
 import { useBuilderStepState } from './builder/step'
 import { useBuilderUploadState } from './builder/upload'
 import { parseHtmlDocument, parseHtmlFile } from '~/services/html/parseHtmlDocument'
-
-type ImageToHtmlResponse = {
-  title?: string
-  html: string
-}
+import type { ImageToHtmlResponse } from '~/types/builder/image-to-html'
 
 export type {
   BuilderDesignMethod,
