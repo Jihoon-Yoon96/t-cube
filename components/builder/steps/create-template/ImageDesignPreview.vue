@@ -12,12 +12,21 @@
           <TcubeIcon icon="ri-arrow-left-line" />
           <span>파일 다시 선택</span>
         </button>
-        <button class="primary-action" type="button" @click="handleGenerateHtml">
+        <button
+          class="primary-action"
+          type="button"
+          :disabled="builderStore.importStatus === 'importing'"
+          @click="handleGenerateHtml"
+        >
           <TcubeIcon icon="ri-code-s-slash-line" />
-          <span>HTML 생성</span>
+          <span>{{ generateButtonLabel }}</span>
         </button>
       </div>
     </div>
+
+    <p v-if="builderStore.uploadError" class="upload-message error">
+      {{ builderStore.uploadError }}
+    </p>
 
     <div v-if="imageUrl" class="image-design-preview-layout">
       <div class="image-design-preview-canvas">
@@ -66,6 +75,12 @@ const builderStore = useBuilderStore()
 const imageUrl = ref('')
 const imageWidth = ref(0)
 const imageHeight = ref(0)
+
+const generateButtonLabel = computed(() => {
+  if (builderStore.importStatus === 'importing') return 'HTML 생성 중'
+
+  return 'HTML 생성'
+})
 
 const fileTypeLabel = computed(() => {
   const extension = builderStore.uploadedFileSummary?.extension
@@ -121,10 +136,10 @@ function handleImageLoad(event: Event) {
 }
 
 /**
- * 다음 단계의 이미지 기반 HTML 생성 기능 진입점을 준비
+ * 이미지 기반 HTML 생성 API를 호출하고 생성 결과를 HTML 편집기로 전달
  */
 function handleGenerateHtml() {
-  builderStore.failFileAnalysis('이미지 기반 HTML 생성 기능은 다음 단계에서 연결할 예정입니다.')
+  builderStore.generateHtmlFromUploadedImage()
 }
 
 /**

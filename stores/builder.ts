@@ -6,7 +6,12 @@ import { useBuilderDesignState } from './builder/design'
 import { useBuilderEditorState } from './builder/editor'
 import { useBuilderStepState } from './builder/step'
 import { useBuilderUploadState } from './builder/upload'
-import { parseHtmlFile } from '~/services/html/parseHtmlDocument'
+import { parseHtmlDocument, parseHtmlFile } from '~/services/html/parseHtmlDocument'
+
+type ImageToHtmlResponse = {
+  title?: string
+  html: string
+}
 
 export type {
   BuilderDesignMethod,
@@ -65,11 +70,46 @@ export const useBuilderStore = defineStore('builder', () => {
     }
   }
 
+  async function generateHtmlFromUploadedImage() {
+    if (!uploadState.uploadedFile.value) {
+      uploadState.failFileAnalysis('HTML을 생성하려면 먼저 이미지 파일을 업로드해주세요.')
+      return
+    }
+
+    uploadState.startFileAnalysis()
+
+    try {
+      const formData = new FormData()
+      formData.append('image', uploadState.uploadedFile.value)
+
+      const response = await $fetch<ImageToHtmlResponse>('/api/builder/image-to-html', {
+        method: 'POST',
+        body: formData
+      })
+
+      const parsedDocument = parseHtmlDocument(response.html, {
+        sourceName: response.title || `${uploadState.uploadedFile.value.name}.html`
+      })
+
+      editorState.setCurrentDocument(parsedDocument)
+      editorState.markDirty(false)
+      uploadState.completeFileAnalysis()
+      stepState.setStep('html-editor')
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : '이미지 기반 HTML을 생성하는 중 문제가 발생했습니다.'
+
+      uploadState.failFileAnalysis(message)
+    }
+  }
+
   return {
     ...stepState,
     ...uploadState,
     ...designState,
     ...editorState,
-    startFileAnalysis
+    startFileAnalysis,
+    generateHtmlFromUploadedImage
   }
 })
