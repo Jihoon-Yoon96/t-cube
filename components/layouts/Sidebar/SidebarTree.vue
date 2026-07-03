@@ -37,7 +37,7 @@ const uploadStepItems = computed(() => [
   },
   {
     label: '이미지 업로드',
-    active: builderStore.step === 'file-upload' && builderStore.selectedUploadFileType === '이미지',
+    active: ['file-upload', 'image-preview'].includes(builderStore.step) && builderStore.selectedUploadFileType === '이미지',
     depth: 2,
     last: false,
     onClick: () => builderStore.selectUploadFileType('이미지')
@@ -108,7 +108,7 @@ const createStepItems = computed(() => {
     ]
   }
 
-  if (builderStore.step === 'file-upload' || builderStore.step === 'html-editor') {
+  if (builderStore.step === 'file-upload' || builderStore.step === 'html-editor' || builderStore.step === 'image-preview') {
     return [
       {
         label: '파일 업로드',

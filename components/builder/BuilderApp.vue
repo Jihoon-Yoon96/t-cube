@@ -2,6 +2,7 @@
   <CreateTemplateStart v-if="builderStore.step === 'start'" />
   <CreateTemplateSelectFileType v-else-if="builderStore.step === 'pdf-image-upload'" />
   <CreateTemplateUploadFile v-else-if="builderStore.step === 'file-upload'" />
+  <CreateTemplateImageDesignPreview v-else-if="builderStore.step === 'image-preview'" />
   <CreateTemplateHowToMakeDesign v-else-if="builderStore.step === 'ai-design'" />
   <CreateTemplateHtmlDocumentEditor v-else-if="builderStore.step === 'html-editor'" />
   <EditTemplateSelectTemplate v-else-if="builderStore.step === 'editor'" />
@@ -16,6 +17,7 @@
 <script setup lang="ts">
 import CreateTemplateHowToMakeDesign from './steps/create-template/HowToMakeDesign.vue'
 import CreateTemplateHtmlDocumentEditor from './steps/create-template/HtmlDocumentEditor.vue'
+import CreateTemplateImageDesignPreview from './steps/create-template/ImageDesignPreview.vue'
 import CreateTemplateSelectFileType from './steps/create-template/SelectFileType.vue'
 import CreateTemplateStart from './steps/create-template/Start.vue'
 import CreateTemplateUploadFile from './steps/create-template/UploadFile.vue'
@@ -567,6 +569,126 @@ const stageSubtitle = computed(() => {
   color: #ffffff;
 }
 
+.image-design-preview-screen {
+  min-height: calc(100vh - 142px);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 18px;
+  border: 1px solid rgba(174, 183, 232, 0.1);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.035));
+  padding: 28px;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18);
+}
+
+.image-design-preview-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.image-design-preview-header h1 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 31px;
+  line-height: 1.2;
+  font-weight: 900;
+}
+
+.image-design-preview-header p {
+  margin: 12px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+  font-weight: 700;
+}
+
+.image-design-preview-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+}
+
+.image-design-preview-layout {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+}
+
+.image-design-preview-canvas,
+.image-design-preview-info {
+  border: 1px solid rgba(174, 183, 232, 0.1);
+  border-radius: 12px;
+  background: rgba(13, 16, 32, 0.4);
+  overflow: hidden;
+}
+
+.image-design-preview-canvas {
+  min-height: 520px;
+  display: grid;
+  place-items: center;
+  background:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.035) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.035) 75%);
+  background-color: #151a31;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  background-size: 20px 20px;
+  padding: 22px;
+}
+
+.image-design-preview-canvas img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 300px);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.28);
+}
+
+.image-design-preview-info {
+  align-self: start;
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+}
+
+.image-design-preview-info > strong {
+  color: var(--text-strong);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.image-design-preview-info dl {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+}
+
+.image-design-preview-info dl div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.image-design-preview-info dt {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.image-design-preview-info dd {
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 800;
+}
+
 .template-list-screen,
 .body-placeholder {
   min-height: calc(100vh - 142px);
@@ -764,6 +886,14 @@ const stageSubtitle = computed(() => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .image-design-preview-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .image-design-preview-info {
+    align-self: stretch;
+  }
+
   .html-editor-layout.show-element-list {
     grid-template-columns: 240px minmax(0, 1fr);
   }
@@ -820,6 +950,32 @@ const stageSubtitle = computed(() => {
 
   .upload-actions {
     flex-direction: column;
+  }
+
+  .image-design-preview-screen {
+    min-height: 420px;
+    padding: 22px;
+  }
+
+  .image-design-preview-header {
+    display: grid;
+  }
+
+  .image-design-preview-header h1 {
+    font-size: 28px;
+  }
+
+  .image-design-preview-actions {
+    flex-direction: column;
+  }
+
+  .image-design-preview-canvas {
+    min-height: 320px;
+    padding: 14px;
+  }
+
+  .image-design-preview-canvas img {
+    max-height: 420px;
   }
 
   .html-editor-layout {
