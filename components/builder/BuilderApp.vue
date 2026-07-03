@@ -4,6 +4,9 @@
   <CreateTemplateUploadFile v-else-if="builderStore.step === 'file-upload'" />
   <CreateTemplateImageDesignPreview v-else-if="builderStore.step === 'image-preview'" />
   <CreateTemplatePdfDesignPreview v-else-if="builderStore.step === 'pdf-preview'" />
+  <CreateTemplateLayoutBuilder
+    v-else-if="builderStore.step === 'ai-design' && builderStore.selectedDesignMethod === 'layout'"
+  />
   <CreateTemplateHowToMakeDesign v-else-if="builderStore.step === 'ai-design'" />
   <CreateTemplateHtmlDocumentEditor v-else-if="builderStore.step === 'html-editor'" />
   <EditTemplateSelectTemplate v-else-if="builderStore.step === 'editor'" />
@@ -19,6 +22,7 @@
 import CreateTemplateHowToMakeDesign from './steps/create-template/HowToMakeDesign.vue'
 import CreateTemplateHtmlDocumentEditor from './steps/create-template/HtmlDocumentEditor.vue'
 import CreateTemplateImageDesignPreview from './steps/create-template/ImageDesignPreview.vue'
+import CreateTemplateLayoutBuilder from './steps/create-template/LayoutBuilder.vue'
 import CreateTemplatePdfDesignPreview from './steps/create-template/PdfDesignPreview.vue'
 import CreateTemplateSelectFileType from './steps/create-template/SelectFileType.vue'
 import CreateTemplateStart from './steps/create-template/Start.vue'

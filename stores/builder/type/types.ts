@@ -18,6 +18,29 @@ export type BuilderStep =
 export type BuilderViewportMode = 'desktop' | 'tablet' | 'mobile'
 export type BuilderUploadFileType = 'HTML' | '이미지' | 'PDF'
 export type BuilderDesignMethod = 'layout' | 'ai-prompt'
+export type BuilderLayoutBlockType =
+  | 'rectangle'
+  | 'circle'
+  | 'triangle'
+  | 'line'
+  | 'header'
+  | 'text'
+  | 'image'
+  | 'button'
+  | 'card'
+  | 'banner'
+export type BuilderLayoutBlock = {
+  id: string
+  type: BuilderLayoutBlockType
+  label: string
+  description: string
+  backgroundColor: string
+  x: number
+  y: number
+  zIndex: number
+  width: number
+  height: number
+}
 export type BuilderUploadedFileSummary = {
   name: string
   size: number
