@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@vueuse/core": "^14.3.0",
+    "pdfjs-dist": "^6.1.200",
     "pinia": "^3.0.4",
     "remixicon": "^4.9.1",
     "vue": "^3.5.39",

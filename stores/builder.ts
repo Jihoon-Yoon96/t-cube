@@ -8,7 +8,7 @@ import { useBuilderStepState } from './builder/step'
 import { useBuilderUploadState } from './builder/upload'
 import { parseHtmlDocument, parseHtmlFile } from '~/services/html/parseHtmlDocument'
 import type { BuilderDesignMethod, BuilderStep, BuilderUploadFileType } from './builder/type/types'
-import type { ImageToHtmlResponse } from '~/types/builder/image-to-html'
+import type { DesignToHtmlResponse } from '~/types/builder/design-to-html'
 
 export type {
   BuilderDesignMethod,
@@ -28,7 +28,7 @@ export const useBuilderStore = defineStore('builder', () => {
   const uploadState = useBuilderUploadState(stepState.step)
   const designState = useBuilderDesignState(stepState.step)
   const editorState = useBuilderEditorState()
-  const imageHtmlGenerationAbortController = shallowRef<AbortController | null>(null)
+  const designHtmlGenerationAbortController = shallowRef<AbortController | null>(null)
 
   async function startFileAnalysis() {
     if (!uploadState.startFileAnalysis()) return
@@ -74,30 +74,23 @@ export const useBuilderStore = defineStore('builder', () => {
       return
     }
 
-    cancelImageHtmlGeneration()
+    cancelDesignHtmlGeneration()
     uploadState.startFileAnalysis()
 
     const abortController = new AbortController()
-    imageHtmlGenerationAbortController.value = abortController
+    designHtmlGenerationAbortController.value = abortController
 
     try {
       const formData = new FormData()
       formData.append('image', uploadState.uploadedFile.value)
 
-      const response = await $fetch<ImageToHtmlResponse>('/api/builder/image-to-html', {
+      const response = await $fetch<DesignToHtmlResponse>('/api/builder/image-to-html', {
         method: 'POST',
         body: formData,
         signal: abortController.signal
       })
 
-      const parsedDocument = parseHtmlDocument(response.html, {
-        sourceName: response.title || `${uploadState.uploadedFile.value.name}.html`
-      })
-
-      editorState.setCurrentDocument(parsedDocument)
-      editorState.markDirty(false)
-      uploadState.completeFileAnalysis()
-      stepState.setStep('html-editor')
+      completeDesignHtmlGeneration(response)
     } catch (error) {
       if (isAbortError(error)) {
         uploadState.cancelFileAnalysis()
@@ -110,18 +103,78 @@ export const useBuilderStore = defineStore('builder', () => {
 
       uploadState.failFileAnalysis(message)
     } finally {
-      if (imageHtmlGenerationAbortController.value === abortController) {
-        imageHtmlGenerationAbortController.value = null
+      if (designHtmlGenerationAbortController.value === abortController) {
+        designHtmlGenerationAbortController.value = null
       }
     }
   }
 
-  function cancelImageHtmlGeneration() {
-    if (!imageHtmlGenerationAbortController.value) return
+  async function generateHtmlFromUploadedPdf() {
+    if (!uploadState.uploadedFile.value) {
+      uploadState.failFileAnalysis('HTML을 생성하려면 먼저 PDF 파일을 업로드해주세요.')
+      return
+    }
 
-    imageHtmlGenerationAbortController.value.abort()
-    imageHtmlGenerationAbortController.value = null
+    cancelDesignHtmlGeneration()
+    uploadState.startFileAnalysis()
+
+    const abortController = new AbortController()
+    designHtmlGenerationAbortController.value = abortController
+
+    try {
+      const formData = new FormData()
+      formData.append('pdf', uploadState.uploadedFile.value)
+
+      const response = await $fetch<DesignToHtmlResponse>('/api/builder/pdf-to-html', {
+        method: 'POST',
+        body: formData,
+        signal: abortController.signal
+      })
+
+      completeDesignHtmlGeneration(response)
+    } catch (error) {
+      if (isAbortError(error)) {
+        uploadState.cancelFileAnalysis()
+        return
+      }
+
+      const message = error instanceof Error
+        ? error.message
+        : 'PDF 기반 HTML을 생성하는 중 문제가 발생했습니다.'
+
+      uploadState.failFileAnalysis(message)
+    } finally {
+      if (designHtmlGenerationAbortController.value === abortController) {
+        designHtmlGenerationAbortController.value = null
+      }
+    }
+  }
+
+  function completeDesignHtmlGeneration(response: DesignToHtmlResponse) {
+    const parsedDocument = parseHtmlDocument(response.html, {
+      sourceName: response.title || `${uploadState.uploadedFile.value?.name || 'generated'}.html`
+    })
+
+    editorState.setCurrentDocument(parsedDocument)
+    editorState.markDirty(false)
+    uploadState.completeFileAnalysis()
+    stepState.setStep('html-editor')
+  }
+
+  function cancelDesignHtmlGeneration() {
+    if (!designHtmlGenerationAbortController.value) return
+
+    designHtmlGenerationAbortController.value.abort()
+    designHtmlGenerationAbortController.value = null
     uploadState.cancelFileAnalysis()
+  }
+
+  function cancelImageHtmlGeneration() {
+    cancelDesignHtmlGeneration()
+  }
+
+  function cancelPdfHtmlGeneration() {
+    cancelDesignHtmlGeneration()
   }
 
   function setStep(nextStep: BuilderStep) {
@@ -153,7 +206,7 @@ export const useBuilderStore = defineStore('builder', () => {
     const confirmed = window.confirm('AI가 HTML을 생성 중입니다. 정말 나가시겠습니까?')
 
     if (confirmed) {
-      cancelImageHtmlGeneration()
+      cancelDesignHtmlGeneration()
     }
 
     return confirmed
@@ -178,6 +231,8 @@ export const useBuilderStore = defineStore('builder', () => {
     selectDesignMethod,
     startFileAnalysis,
     generateHtmlFromUploadedImage,
-    cancelImageHtmlGeneration
+    generateHtmlFromUploadedPdf,
+    cancelImageHtmlGeneration,
+    cancelPdfHtmlGeneration
   }
 })
