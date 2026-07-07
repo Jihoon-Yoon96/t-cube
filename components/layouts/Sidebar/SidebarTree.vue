@@ -54,14 +54,14 @@ const uploadTreeItems = computed(() => [
 const designTreeItems = computed(() => [
   {
     label: '레이아웃 작성',
-    active: builderStore.currentView === 'ai-design' && builderStore.selectedDesignMethod === 'layout',
+    active: builderStore.currentView === 'layout-design',
     depth: 2,
     last: false,
     onClick: () => builderStore.selectDesignMethod('layout')
   },
   {
     label: 'AI 프롬프트 작성',
-    active: builderStore.currentView === 'ai-design' && builderStore.selectedDesignMethod === 'ai-prompt',
+    active: builderStore.currentView === 'ai-prompt-design',
     depth: 2,
     last: true,
     onClick: () => builderStore.selectDesignMethod('ai-prompt')
@@ -83,7 +83,7 @@ const createTreeItems = computed(() => {
         active: false,
         depth: 1,
         last: true,
-        onClick: () => builderStore.setView('ai-design')
+        onClick: () => builderStore.setView('design-method')
       }
     ]
   }
@@ -103,7 +103,7 @@ const createTreeItems = computed(() => {
         active: false,
         depth: 1,
         last: true,
-        onClick: () => builderStore.setView('ai-design')
+        onClick: () => builderStore.setView('design-method')
       }
     ]
   }
@@ -128,12 +128,16 @@ const createTreeItems = computed(() => {
         active: false,
         depth: 1,
         last: true,
-        onClick: () => builderStore.setView('ai-design')
+        onClick: () => builderStore.setView('design-method')
       }
     ]
   }
 
-  if (builderStore.currentView === 'ai-design') {
+  if (
+    builderStore.currentView === 'design-method'
+    || builderStore.currentView === 'layout-design'
+    || builderStore.currentView === 'ai-prompt-design'
+  ) {
     return [
       {
         label: '파일 업로드',
@@ -144,10 +148,10 @@ const createTreeItems = computed(() => {
       },
       {
         label: '디자인 시안 작성',
-        active: true,
+        active: builderStore.currentView === 'design-method',
         depth: 1,
         last: false,
-        onClick: () => builderStore.setView('ai-design')
+        onClick: () => builderStore.setView('design-method')
       },
       ...designTreeItems.value
     ]
@@ -167,7 +171,7 @@ const createTreeItems = computed(() => {
         active: false,
         depth: 1,
         last: true,
-        onClick: () => builderStore.setView('ai-design')
+        onClick: () => builderStore.setView('design-method')
       }
     ]
   }

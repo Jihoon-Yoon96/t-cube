@@ -1,21 +1,16 @@
-﻿/**
- * 템플릿 생성 화면 중 "디자인 시안 작성" 흐름에서
- * 사용자가 선택한 작성 방식과 AI 생성 상태를 관리
+/**
+ * 레이아웃 작성 화면의 블록 데이터와 선택 상태 관리
+ * DOM 이벤트와 분리된 캔버스 모델 조작 로직 제공
  */
-
-
-import type { BuilderDesignMethod, BuilderLayoutBlock, BuilderLayoutBlockType, BuilderView } from './type/types'
+import type { BuilderLayoutBlock, BuilderLayoutBlockType } from '~/stores/builder/type/types'
 
 /**
- * 디자인 시안 작성 상태 구성
- * 작성 방식, AI 상태, 레이아웃 블록 상태 관리
+ * 레이아웃 빌더 상태 구성
+ * 블록 추가/수정/삭제, 선택, 계층 순서 변경 흐름 관리
  *
- * @param currentView 현재 빌더 화면 ref
- * @returns 디자인 시안 작성 상태와 레이아웃 블록 변경 API
+ * @returns 레이아웃 블록 상태와 조작 API
  */
-export function useBuilderDesignState(currentView: Ref<BuilderView>) {
-  const selectedDesignMethod = ref<BuilderDesignMethod | null>(null)
-  const aiStatus = ref<'idle' | 'generating' | 'complete' | 'error'>('idle')
+export function useBuilderLayoutCanvas() {
   const layoutBlocks = ref<BuilderLayoutBlock[]>([])
   const selectedLayoutBlockId = ref<string | null>(null)
 
@@ -27,17 +22,6 @@ export function useBuilderDesignState(currentView: Ref<BuilderView>) {
   const selectedLayoutBlock = computed(() => (
     layoutBlocks.value.find((block) => block.id === selectedLayoutBlockId.value) || null
   ))
-
-  /**
-   * 디자인 시안 작성 방식 선택
-   * 작성 화면으로 currentView 변경
-   *
-   * @param method 선택할 작성 방식
-   */
-  function selectDesignMethod(method: BuilderDesignMethod) {
-    selectedDesignMethod.value = method
-    currentView.value = 'ai-design'
-  }
 
   /**
    * 레이아웃 블록 추가
@@ -146,6 +130,13 @@ export function useBuilderDesignState(currentView: Ref<BuilderView>) {
    */
   function clearLayoutBlocks() {
     layoutBlocks.value = []
+    selectedLayoutBlockId.value = null
+  }
+
+  /**
+   * 레이아웃 블록 선택 해제
+   */
+  function clearLayoutBlockSelection() {
     selectedLayoutBlockId.value = null
   }
 
@@ -312,12 +303,9 @@ export function useBuilderDesignState(currentView: Ref<BuilderView>) {
   }
 
   return {
-    selectedDesignMethod,
-    aiStatus,
     layoutBlocks,
     selectedLayoutBlockId,
     selectedLayoutBlock,
-    selectDesignMethod,
     addLayoutBlock,
     selectLayoutBlock,
     updateLayoutBlock,
@@ -326,7 +314,7 @@ export function useBuilderDesignState(currentView: Ref<BuilderView>) {
     moveLayoutBlockToFront,
     moveLayoutBlockToBack,
     removeLayoutBlock,
-    clearLayoutBlocks
+    clearLayoutBlocks,
+    clearLayoutBlockSelection
   }
 }
-

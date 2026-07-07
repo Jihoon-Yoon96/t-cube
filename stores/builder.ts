@@ -6,7 +6,7 @@ import { useBuilderFileAnalysis } from '~/composables/file/useBuilderFileAnalysi
 import { useBuilderDesignToHtml } from '~/composables/html/useBuilderDesignToHtml'
 import { useBuilderLayoutDesign } from '~/composables/layout/useBuilderLayoutDesign'
 import { useBuilderNavigationGuard } from '~/composables/navigation/useBuilderNavigationGuard'
-import { useBuilderDesignState } from './builder/design'
+import { useBuilderLayoutCanvas } from '~/composables/layout/useBuilderLayoutCanvas'
 import { useBuilderEditorState } from './builder/editor'
 import { useBuilderViewState } from './builder/view'
 import { useBuilderUploadState } from './builder/upload'
@@ -35,7 +35,7 @@ export type {
 export const useBuilderStore = defineStore('builder', () => {
   const viewState = useBuilderViewState()
   const uploadState = useBuilderUploadState(viewState.currentView)
-  const designState = useBuilderDesignState(viewState.currentView)
+  const layoutCanvas = useBuilderLayoutCanvas()
   const editorState = useBuilderEditorState()
   const designToHtmlFlow = useBuilderDesignToHtml({
     uploadState,
@@ -48,14 +48,13 @@ export const useBuilderStore = defineStore('builder', () => {
     viewState
   })
   const layoutDesignFlow = useBuilderLayoutDesign({
-    designState,
+    layoutCanvas,
     uploadState,
     editorState,
     viewState
   })
   const navigationGuardFlow = useBuilderNavigationGuard({
     uploadState,
-    designState,
     viewState,
     cancelDesignHtmlGeneration: designToHtmlFlow.cancelDesignHtmlGeneration
   })
@@ -63,7 +62,7 @@ export const useBuilderStore = defineStore('builder', () => {
   return {
     ...viewState,
     ...uploadState,
-    ...designState,
+    ...layoutCanvas,
     ...editorState,
     setView: navigationGuardFlow.setView,
     selectUploadFileType: navigationGuardFlow.selectUploadFileType,

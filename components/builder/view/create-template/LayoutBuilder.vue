@@ -601,15 +601,14 @@ function getMinHeight(type: BuilderLayoutBlockType) {
  * 캔버스 빈 영역을 클릭했을 때 현재 선택을 해제
  */
 function clearSelection() {
-  builderStore.selectedLayoutBlockId = null
+  builderStore.clearLayoutBlockSelection()
 }
 
 /**
  * 디자인 작성 방식 선택 화면으로 돌아가기 위해 현재 선택된 작성 방식을 초기화
  */
 function handleSelectMethodAgain() {
-  builderStore.selectedDesignMethod = null
-  builderStore.setView('ai-design')
+  builderStore.setView('design-method')
 }
 
 /**

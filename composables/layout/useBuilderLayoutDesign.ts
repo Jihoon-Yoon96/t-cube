@@ -4,18 +4,18 @@
  */
 import { createLayoutDesignHtml } from '~/services/builder/layoutDesignToHtml'
 import { parseHtmlDocument } from '~/services/html/parseHtmlDocument'
-import type { useBuilderDesignState } from '~/stores/builder/design'
+import type { useBuilderLayoutCanvas } from '~/composables/layout/useBuilderLayoutCanvas'
 import type { useBuilderEditorState } from '~/stores/builder/editor'
 import type { useBuilderViewState } from '~/stores/builder/view'
 import type { useBuilderUploadState } from '~/stores/builder/upload'
 
-type BuilderDesignState = ReturnType<typeof useBuilderDesignState>
+type BuilderLayoutCanvasState = ReturnType<typeof useBuilderLayoutCanvas>
 type BuilderUploadState = ReturnType<typeof useBuilderUploadState>
 type BuilderEditorState = ReturnType<typeof useBuilderEditorState>
 type BuilderViewState = ReturnType<typeof useBuilderViewState>
 
 type BuilderLayoutDesignParams = {
-  designState: BuilderDesignState
+  layoutCanvas: BuilderLayoutCanvasState
   uploadState: BuilderUploadState
   editorState: BuilderEditorState
   viewState: BuilderViewState
@@ -29,19 +29,19 @@ type BuilderLayoutDesignParams = {
  * @returns 레이아웃 기반 HTML 생성 API
  */
 export function useBuilderLayoutDesign(params: BuilderLayoutDesignParams) {
-  const { designState, uploadState, editorState, viewState } = params
+  const { layoutCanvas, uploadState, editorState, viewState } = params
 
   /**
    * 레이아웃 블록 기반 HTML 생성
    * 생성된 HTML 파싱 및 HTML 편집 화면 전환
    */
   function generateHtmlFromLayoutDesign() {
-    if (!designState.layoutBlocks.value.length) {
+    if (!layoutCanvas.layoutBlocks.value.length) {
       uploadState.failFileAnalysis('HTML을 생성하려면 먼저 캔버스에 레이아웃 블록을 추가해주세요.')
       return
     }
 
-    const html = createLayoutDesignHtml(designState.layoutBlocks.value)
+    const html = createLayoutDesignHtml(layoutCanvas.layoutBlocks.value)
     const parsedDocument = parseHtmlDocument(html, {
       sourceName: 'layout-design.html'
     })

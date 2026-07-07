@@ -4,10 +4,8 @@
   <CreateTemplateUploadFile v-else-if="builderStore.currentView === 'file-upload'" />
   <CreateTemplateImageDesignPreview v-else-if="builderStore.currentView === 'image-preview'" />
   <CreateTemplatePdfDesignPreview v-else-if="builderStore.currentView === 'pdf-preview'" />
-  <CreateTemplateLayoutBuilder
-    v-else-if="builderStore.currentView === 'ai-design' && builderStore.selectedDesignMethod === 'layout'"
-  />
-  <CreateTemplateHowToMakeDesign v-else-if="builderStore.currentView === 'ai-design'" />
+  <CreateTemplateHowToMakeDesign v-else-if="builderStore.currentView === 'design-method'" />
+  <CreateTemplateLayoutBuilder v-else-if="builderStore.currentView === 'layout-design'" />
   <CreateTemplateHtmlDocumentEditor v-else-if="builderStore.currentView === 'html-editor'" />
   <EditTemplateSelectTemplate v-else-if="builderStore.currentView === 'editor'" />
 

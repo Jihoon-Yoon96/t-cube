@@ -12,7 +12,6 @@ stores
 └─ builder
    ├─ view.ts
    ├─ upload.ts
-   ├─ design.ts
    ├─ editor.ts
    └─ type
       └─ types.ts
@@ -22,7 +21,7 @@ stores
 
 `stores/builder.ts`는 외부 컴포넌트가 사용하는 단일 진입점이다. 내부 상태 모듈을 조립하고, 컴포넌트에는 `useBuilderStore()` 하나로 접근할 수 있는 API를 제공한다.
 
-이 구조를 사용하는 이유는 store 내부의 관심사는 작게 나누되, 컴포넌트가 여러 store 조각을 직접 알고 조립하지 않게 하기 위해서다. 빌더 화면은 업로드, 화면 전환, 편집 문서, AI 생성 상태가 서로 자주 연결된다. 컴포넌트마다 `view.ts`, `upload.ts`, `editor.ts`, `design.ts`를 직접 가져다 쓰면 화면 코드가 store 내부 구조에 강하게 묶이고, 상태 전환 순서도 컴포넌트 여기저기에 흩어지기 쉽다.
+이 구조를 사용하는 이유는 store 내부의 관심사는 작게 나누되, 컴포넌트가 여러 store 조각을 직접 알고 조립하지 않게 하기 위해서다. 빌더 화면은 업로드, 화면 전환, 편집 문서, AI 생성 상태가 서로 자주 연결된다. 컴포넌트마다 `view.ts`, `upload.ts`, `editor.ts`를 직접 가져다 쓰면 화면 코드가 store 내부 구조에 강하게 묶이고, 상태 전환 순서도 컴포넌트 여기저기에 흩어지기 쉽다.
 
 따라서 `builder.ts`가 facade 역할을 한다. 내부에서는 상태를 기준별로 나누고, 외부에는 `useBuilderStore()`라는 하나의 안정적인 사용 지점을 제공한다. 이렇게 하면 추후 상태 모듈을 다시 쪼개더라도 컴포넌트 변경 범위를 줄일 수 있다.
 
@@ -30,7 +29,6 @@ stores
 
 - `view.ts`: 현재 빌더 화면과 viewport 상태
 - `upload.ts`: 업로드 파일, 파일 유형, 분석 상태
-- `design.ts`: 디자인 시안 작성 방식과 레이아웃 블록 상태
 - `editor.ts`: HTML 편집 문서, 선택 요소, dirty 상태
 
 `stores/builder/type/types.ts`는 builder store 내부와 관련 모듈에서 공유하는 타입만 관리한다. 여러 계층에서 함께 쓰는 API 응답 타입이나 저장 payload 타입은 `types` 디렉터리에 둔다.
