@@ -45,6 +45,19 @@ pnpm dev
 pnpm dev:local
 ```
 
+## AI API 키 설정
+
+이미지/PDF 시안을 HTML로 변환하려면 Gemini API 키가 필요합니다.
+
+프로젝트 루트에 `.env` 파일을 만들고 아래 값을 추가합니다.
+
+```env
+GEMINI_API_KEY=본인의_Gemini_API_키
+GEMINI_IMAGE_TO_HTML_MODEL=gemini-2.5-flash
+```
+
+`.env` 파일은 Git에 포함하지 않습니다. 배포할 때도 동일한 key 이름으로 환경변수 등록을 해야합니다.
+
 프로덕션 빌드:
 
 ```bash

@@ -1,13 +1,3 @@
-// import { createRequire } from 'node:module'
-
-type AppRuntimeConfig = {
-  GEMINI?: {
-    API_KEY?: string
-    MODEL?: string
-  }
-}
-
-// const require = createRequire(import.meta.url)
 const CONFIG = require('./config/config')
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
@@ -15,7 +5,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   runtimeConfig: {
-    geminiApiKey: process.env.GEMINI_API_KEY || CONFIG.GEMINI?.API_KEY || '',
+    geminiApiKey: process.env.GEMINI_API_KEY || '',
     geminiImageToHtmlModel: process.env.GEMINI_IMAGE_TO_HTML_MODEL || CONFIG.GEMINI?.MODEL || 'gemini-2.5-flash'
   },
   modules: ['@vueuse/nuxt', '@pinia/nuxt'],
