@@ -1,35 +1,37 @@
 ﻿/**
- * 업로드 파일 분석 store action 모음
+ * 업로드 파일 분석 composable
  * 파일 유형별 preview 전환 및 HTML 파일 파싱 결과의 편집기 반영 흐름 관리
  */
 import { parseHtmlFile } from '~/services/html/parseHtmlDocument'
-import type { useBuilderEditorState } from '../editor'
-import type { useBuilderViewState } from '../view'
-import type { useBuilderUploadState } from '../upload'
+import type { useBuilderEditorState } from '~/stores/builder/editor'
+import type { useBuilderViewState } from '~/stores/builder/view'
+import type { useBuilderUploadState } from '~/stores/builder/upload'
 
 type BuilderUploadState = ReturnType<typeof useBuilderUploadState>
 type BuilderEditorState = ReturnType<typeof useBuilderEditorState>
 type BuilderViewState = ReturnType<typeof useBuilderViewState>
 
-type BuilderFileAnalysisActionParams = {
+type BuilderFileAnalysisParams = {
   uploadState: BuilderUploadState
   editorState: BuilderEditorState
   viewState: BuilderViewState
 }
 
 /**
- * 업로드 파일 분석 액션 구성
+ * 업로드 파일 분석 흐름 구성
  * HTML은 즉시 파싱하고, 이미지/PDF는 확인 화면으로 전환
  *
- * @param params 파일 분석 액션에서 공유할 업로드/편집기/화면 상태
- * @returns 업로드 파일 분석 액션
+ * @param params 파일 분석 흐름에서 공유할 업로드/편집기/화면 상태
+ * @returns 업로드 파일 분석 API
  */
-export function useBuilderFileAnalysisActions(params: BuilderFileAnalysisActionParams) {
+export function useBuilderFileAnalysis(params: BuilderFileAnalysisParams) {
   const { uploadState, editorState, viewState } = params
 
   /**
    * 업로드 파일 분석 시작
    * 선택된 파일 유형에 따라 HTML 편집기 또는 preview 화면으로 전환
+   *
+   * @returns 파일 분석 처리 완료 Promise
    */
   async function startFileAnalysis() {
     if (!uploadState.startFileAnalysis()) return
@@ -73,4 +75,3 @@ export function useBuilderFileAnalysisActions(params: BuilderFileAnalysisActionP
     startFileAnalysis
   }
 }
-

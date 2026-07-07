@@ -1,17 +1,17 @@
 ﻿/**
- * 빌더 화면 이동 guard store action 모음
+ * 빌더 화면 이동 guard composable
  * HTML 생성 중 화면 이탈 확인 및 이동 승인 흐름 관리
  */
-import type { useBuilderDesignState } from '../design'
-import type { useBuilderViewState } from '../view'
-import type { useBuilderUploadState } from '../upload'
-import type { BuilderDesignMethod, BuilderView, BuilderUploadFileType } from '../type/types'
+import type { useBuilderDesignState } from '~/stores/builder/design'
+import type { useBuilderViewState } from '~/stores/builder/view'
+import type { useBuilderUploadState } from '~/stores/builder/upload'
+import type { BuilderDesignMethod, BuilderView, BuilderUploadFileType } from '~/stores/builder/type/types'
 
 type BuilderUploadState = ReturnType<typeof useBuilderUploadState>
 type BuilderDesignState = ReturnType<typeof useBuilderDesignState>
 type BuilderViewState = ReturnType<typeof useBuilderViewState>
 
-type BuilderNavigationGuardActionParams = {
+type BuilderNavigationGuardParams = {
   uploadState: BuilderUploadState
   designState: BuilderDesignState
   viewState: BuilderViewState
@@ -19,13 +19,13 @@ type BuilderNavigationGuardActionParams = {
 }
 
 /**
- * 빌더 이동 guard 액션 구성
+ * 빌더 이동 guard 구성
  * 생성 중인 AI 요청이 있으면 사용자 확인 후 상태 변경
  *
  * @param params 이동 guard에서 공유할 업로드/디자인/화면 상태와 취소 함수
- * @returns 화면/업로드 유형/디자인 방식 선택 액션
+ * @returns 화면/업로드 유형/디자인 방식 선택 API
  */
-export function useBuilderNavigationGuardActions(params: BuilderNavigationGuardActionParams) {
+export function useBuilderNavigationGuard(params: BuilderNavigationGuardParams) {
   const { uploadState, designState, viewState, cancelDesignHtmlGeneration } = params
 
   /**

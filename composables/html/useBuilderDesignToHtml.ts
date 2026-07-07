@@ -1,37 +1,39 @@
 ﻿/**
- * 이미지/PDF 디자인 시안의 HTML 변환 store action 모음
+ * 이미지/PDF 디자인 시안의 HTML 변환 composable
  * API 호출, 요청 취소, 변환 결과의 편집기 반영 흐름 관리
  */
 import { parseHtmlDocument } from '~/services/html/parseHtmlDocument'
-import type { useBuilderEditorState } from '../editor'
-import type { useBuilderViewState } from '../view'
-import type { useBuilderUploadState } from '../upload'
+import type { useBuilderEditorState } from '~/stores/builder/editor'
+import type { useBuilderViewState } from '~/stores/builder/view'
+import type { useBuilderUploadState } from '~/stores/builder/upload'
 import type { DesignToHtmlResponse } from '~/types/builder/design-to-html'
 
 type BuilderUploadState = ReturnType<typeof useBuilderUploadState>
 type BuilderEditorState = ReturnType<typeof useBuilderEditorState>
 type BuilderViewState = ReturnType<typeof useBuilderViewState>
 
-type BuilderDesignToHtmlActionParams = {
+type BuilderDesignToHtmlParams = {
   uploadState: BuilderUploadState
   editorState: BuilderEditorState
   viewState: BuilderViewState
 }
 
 /**
- * 이미지/PDF 디자인 시안의 HTML 변환 액션 구성
+ * 이미지/PDF 디자인 시안의 HTML 변환 흐름 구성
  * API 호출, 취소, 응답 파싱, HTML 편집 화면 전환 흐름 관리
  *
- * @param params 변환 액션에서 공유할 업로드/편집기/화면 상태
- * @returns 이미지/PDF HTML 변환 및 취소 액션
+ * @param params 변환 흐름에서 공유할 업로드/편집기/화면 상태
+ * @returns 이미지/PDF HTML 변환 및 취소 API
  */
-export function useBuilderDesignToHtmlActions(params: BuilderDesignToHtmlActionParams) {
+export function useBuilderDesignToHtml(params: BuilderDesignToHtmlParams) {
   const { uploadState, editorState, viewState } = params
   const designHtmlGenerationAbortController = shallowRef<AbortController | null>(null)
 
   /**
    * 업로드된 이미지 파일을 기반으로 HTML 생성 요청
    * 변환 성공 시 HTML 편집 화면으로 전환
+   *
+   * @returns 이미지 HTML 생성 처리 완료 Promise
    */
   async function generateHtmlFromUploadedImage() {
     if (!uploadState.uploadedFile.value) {
@@ -77,6 +79,8 @@ export function useBuilderDesignToHtmlActions(params: BuilderDesignToHtmlActionP
   /**
    * 업로드된 PDF 파일을 기반으로 HTML 생성 요청
    * 변환 성공 시 HTML 편집 화면으로 전환
+   *
+   * @returns PDF HTML 생성 처리 완료 Promise
    */
   async function generateHtmlFromUploadedPdf() {
     if (!uploadState.uploadedFile.value) {

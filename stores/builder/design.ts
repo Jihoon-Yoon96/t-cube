@@ -6,21 +6,45 @@
 
 import type { BuilderDesignMethod, BuilderLayoutBlock, BuilderLayoutBlockType, BuilderView } from './type/types'
 
+/**
+ * 디자인 시안 작성 상태 구성
+ * 작성 방식, AI 상태, 레이아웃 블록 상태 관리
+ *
+ * @param currentView 현재 빌더 화면 ref
+ * @returns 디자인 시안 작성 상태와 레이아웃 블록 변경 API
+ */
 export function useBuilderDesignState(currentView: Ref<BuilderView>) {
   const selectedDesignMethod = ref<BuilderDesignMethod | null>(null)
   const aiStatus = ref<'idle' | 'generating' | 'complete' | 'error'>('idle')
   const layoutBlocks = ref<BuilderLayoutBlock[]>([])
   const selectedLayoutBlockId = ref<string | null>(null)
 
+  /**
+   * 현재 선택된 레이아웃 블록
+   *
+   * @returns 선택된 블록, 없으면 null
+   */
   const selectedLayoutBlock = computed(() => (
     layoutBlocks.value.find((block) => block.id === selectedLayoutBlockId.value) || null
   ))
 
+  /**
+   * 디자인 시안 작성 방식 선택
+   * 작성 화면으로 currentView 변경
+   *
+   * @param method 선택할 작성 방식
+   */
   function selectDesignMethod(method: BuilderDesignMethod) {
     selectedDesignMethod.value = method
     currentView.value = 'ai-design'
   }
 
+  /**
+   * 레이아웃 블록 추가
+   * 생성된 블록을 즉시 선택 상태로 변경
+   *
+   * @param type 추가할 레이아웃 블록 유형
+   */
   function addLayoutBlock(type: BuilderLayoutBlockType) {
     const nextBlock = createLayoutBlock(type)
 
@@ -28,10 +52,21 @@ export function useBuilderDesignState(currentView: Ref<BuilderView>) {
     selectedLayoutBlockId.value = nextBlock.id
   }
 
+  /**
+   * 레이아웃 블록 선택
+   *
+   * @param blockId 선택할 블록 id
+   */
   function selectLayoutBlock(blockId: string) {
     selectedLayoutBlockId.value = blockId
   }
 
+  /**
+   * 레이아웃 블록 속성 갱신
+   *
+   * @param blockId 변경할 블록 id
+   * @param patch 블록에 반영할 변경 값
+   */
   function updateLayoutBlock(blockId: string, patch: Partial<Omit<BuilderLayoutBlock, 'id'>>) {
     const block = layoutBlocks.value.find((item) => item.id === blockId)
 
@@ -40,14 +75,29 @@ export function useBuilderDesignState(currentView: Ref<BuilderView>) {
     Object.assign(block, patch)
   }
 
+  /**
+   * 레이아웃 블록을 한 계층 앞으로 이동
+   *
+   * @param blockId 이동할 블록 id
+   */
   function moveLayoutBlockForward(blockId: string) {
     moveLayoutBlockByOffset(blockId, 1)
   }
 
+  /**
+   * 레이아웃 블록을 한 계층 뒤로 이동
+   *
+   * @param blockId 이동할 블록 id
+   */
   function moveLayoutBlockBackward(blockId: string) {
     moveLayoutBlockByOffset(blockId, -1)
   }
 
+  /**
+   * 레이아웃 블록을 최상위 계층으로 이동
+   *
+   * @param blockId 이동할 블록 id
+   */
   function moveLayoutBlockToFront(blockId: string) {
     const orderedBlocks = getBlocksByLayer()
     const currentIndex = orderedBlocks.findIndex((block) => block.id === blockId)
@@ -60,6 +110,11 @@ export function useBuilderDesignState(currentView: Ref<BuilderView>) {
     normalizeLayoutBlockLayers(orderedBlocks)
   }
 
+  /**
+   * 레이아웃 블록을 최하위 계층으로 이동
+   *
+   * @param blockId 이동할 블록 id
+   */
   function moveLayoutBlockToBack(blockId: string) {
     const orderedBlocks = getBlocksByLayer()
     const currentIndex = orderedBlocks.findIndex((block) => block.id === blockId)
@@ -72,6 +127,12 @@ export function useBuilderDesignState(currentView: Ref<BuilderView>) {
     normalizeLayoutBlockLayers(orderedBlocks)
   }
 
+  /**
+   * 레이아웃 블록 삭제
+   * 삭제 대상이 선택 블록이면 마지막 블록을 선택
+   *
+   * @param blockId 삭제할 블록 id
+   */
   function removeLayoutBlock(blockId: string) {
     layoutBlocks.value = layoutBlocks.value.filter((block) => block.id !== blockId)
 
@@ -80,11 +141,21 @@ export function useBuilderDesignState(currentView: Ref<BuilderView>) {
     }
   }
 
+  /**
+   * 전체 레이아웃 블록 초기화
+   */
   function clearLayoutBlocks() {
     layoutBlocks.value = []
     selectedLayoutBlockId.value = null
   }
 
+  /**
+   * 레이아웃 블록 생성
+   * 프리셋과 현재 블록 개수 기준 초기 위치 설정
+   *
+   * @param type 생성할 레이아웃 블록 유형
+   * @returns 새 레이아웃 블록
+   */
   function createLayoutBlock(type: BuilderLayoutBlockType): BuilderLayoutBlock {
     const base = getLayoutBlockPreset(type)
     const index = layoutBlocks.value.length
@@ -98,6 +169,12 @@ export function useBuilderDesignState(currentView: Ref<BuilderView>) {
     }
   }
 
+  /**
+   * 레이아웃 블록 유형별 프리셋 조회
+   *
+   * @param type 조회할 레이아웃 블록 유형
+   * @returns id/좌표/계층값을 제외한 블록 기본값
+   */
   function getLayoutBlockPreset(type: BuilderLayoutBlockType): Omit<BuilderLayoutBlock, 'id' | 'x' | 'y' | 'zIndex'> {
     const presets: Record<BuilderLayoutBlockType, Omit<BuilderLayoutBlock, 'id' | 'x' | 'y' | 'zIndex'>> = {
       rectangle: {
@@ -185,6 +262,12 @@ export function useBuilderDesignState(currentView: Ref<BuilderView>) {
     return presets[type]
   }
 
+  /**
+   * 레이아웃 블록 계층 순서 이동
+   *
+   * @param blockId 이동할 블록 id
+   * @param offset 이동 방향, 1은 앞으로 -1은 뒤로
+   */
   function moveLayoutBlockByOffset(blockId: string, offset: -1 | 1) {
     const orderedBlocks = getBlocksByLayer()
     const currentIndex = orderedBlocks.findIndex((block) => block.id === blockId)
@@ -199,16 +282,31 @@ export function useBuilderDesignState(currentView: Ref<BuilderView>) {
     normalizeLayoutBlockLayers(orderedBlocks)
   }
 
+  /**
+   * 레이아웃 블록 계층 정렬
+   *
+   * @returns zIndex 오름차순으로 정렬한 블록 목록
+   */
   function getBlocksByLayer() {
     return [...layoutBlocks.value].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))
   }
 
+  /**
+   * 레이아웃 블록 계층값 재정렬
+   *
+   * @param orderedBlocks zIndex 순서대로 정렬된 블록 목록
+   */
   function normalizeLayoutBlockLayers(orderedBlocks = getBlocksByLayer()) {
     orderedBlocks.forEach((block, index) => {
       block.zIndex = index + 1
     })
   }
 
+  /**
+   * 다음 레이아웃 블록 계층값 계산
+   *
+   * @returns 현재 최대 zIndex 다음 값
+   */
   function getNextLayerIndex() {
     return Math.max(0, ...layoutBlocks.value.map((block) => block.zIndex || 0)) + 1
   }

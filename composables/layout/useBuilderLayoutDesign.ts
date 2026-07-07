@@ -1,20 +1,20 @@
 ﻿/**
- * 레이아웃 작성 기반 HTML 생성 store action 모음
+ * 레이아웃 작성 기반 HTML 생성 composable
  * 레이아웃 블록 변환 결과의 편집기 반영 및 화면 전환 흐름 관리
  */
 import { createLayoutDesignHtml } from '~/services/builder/layoutDesignToHtml'
 import { parseHtmlDocument } from '~/services/html/parseHtmlDocument'
-import type { useBuilderDesignState } from '../design'
-import type { useBuilderEditorState } from '../editor'
-import type { useBuilderViewState } from '../view'
-import type { useBuilderUploadState } from '../upload'
+import type { useBuilderDesignState } from '~/stores/builder/design'
+import type { useBuilderEditorState } from '~/stores/builder/editor'
+import type { useBuilderViewState } from '~/stores/builder/view'
+import type { useBuilderUploadState } from '~/stores/builder/upload'
 
 type BuilderDesignState = ReturnType<typeof useBuilderDesignState>
 type BuilderUploadState = ReturnType<typeof useBuilderUploadState>
 type BuilderEditorState = ReturnType<typeof useBuilderEditorState>
 type BuilderViewState = ReturnType<typeof useBuilderViewState>
 
-type BuilderLayoutDesignActionParams = {
+type BuilderLayoutDesignParams = {
   designState: BuilderDesignState
   uploadState: BuilderUploadState
   editorState: BuilderEditorState
@@ -22,13 +22,13 @@ type BuilderLayoutDesignActionParams = {
 }
 
 /**
- * 레이아웃 작성 기반 HTML 생성 액션 구성
+ * 레이아웃 작성 기반 HTML 생성 흐름 구성
  * 캔버스 블록을 HTML 문서로 변환한 뒤 편집기 상태로 반영
  *
- * @param params 레이아웃 HTML 생성 액션에서 공유할 디자인/업로드/편집기/화면 상태
- * @returns 레이아웃 기반 HTML 생성 액션
+ * @param params 레이아웃 HTML 생성 흐름에서 공유할 디자인/업로드/편집기/화면 상태
+ * @returns 레이아웃 기반 HTML 생성 API
  */
-export function useBuilderLayoutDesignActions(params: BuilderLayoutDesignActionParams) {
+export function useBuilderLayoutDesign(params: BuilderLayoutDesignParams) {
   const { designState, uploadState, editorState, viewState } = params
 
   /**
