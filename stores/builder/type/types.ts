@@ -3,7 +3,7 @@
  */
 
 
-export type BuilderStep =
+export type BuilderView =
   | 'start'
   | 'html-upload'
   | 'pdf-image-upload'

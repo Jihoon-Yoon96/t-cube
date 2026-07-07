@@ -1,32 +1,32 @@
-/**
+﻿/**
  * 이미지/PDF 디자인 시안의 HTML 변환 store action 모음
  * API 호출, 요청 취소, 변환 결과의 편집기 반영 흐름 관리
  */
 import { parseHtmlDocument } from '~/services/html/parseHtmlDocument'
 import type { useBuilderEditorState } from '../editor'
-import type { useBuilderStepState } from '../step'
+import type { useBuilderViewState } from '../view'
 import type { useBuilderUploadState } from '../upload'
 import type { DesignToHtmlResponse } from '~/types/builder/design-to-html'
 
 type BuilderUploadState = ReturnType<typeof useBuilderUploadState>
 type BuilderEditorState = ReturnType<typeof useBuilderEditorState>
-type BuilderStepState = ReturnType<typeof useBuilderStepState>
+type BuilderViewState = ReturnType<typeof useBuilderViewState>
 
 type BuilderDesignToHtmlActionParams = {
   uploadState: BuilderUploadState
   editorState: BuilderEditorState
-  stepState: BuilderStepState
+  viewState: BuilderViewState
 }
 
 /**
  * 이미지/PDF 디자인 시안의 HTML 변환 액션 구성
  * API 호출, 취소, 응답 파싱, HTML 편집 화면 전환 흐름 관리
  *
- * @param params 변환 액션에서 공유할 업로드/편집기/단계 상태
+ * @param params 변환 액션에서 공유할 업로드/편집기/화면 상태
  * @returns 이미지/PDF HTML 변환 및 취소 액션
  */
 export function useBuilderDesignToHtmlActions(params: BuilderDesignToHtmlActionParams) {
-  const { uploadState, editorState, stepState } = params
+  const { uploadState, editorState, viewState } = params
   const designHtmlGenerationAbortController = shallowRef<AbortController | null>(null)
 
   /**
@@ -133,7 +133,7 @@ export function useBuilderDesignToHtmlActions(params: BuilderDesignToHtmlActionP
     editorState.setCurrentDocument(parsedDocument)
     editorState.markDirty(false)
     uploadState.completeFileAnalysis()
-    stepState.setStep('html-editor')
+    viewState.setView('html-editor')
   }
 
   /**
@@ -185,3 +185,4 @@ export function useBuilderDesignToHtmlActions(params: BuilderDesignToHtmlActionP
     cancelPdfHtmlGeneration
   }
 }
+

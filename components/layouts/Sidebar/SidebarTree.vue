@@ -1,23 +1,23 @@
-<template>
+﻿<template>
   <div
-    v-if="createStepItems.length"
+    v-if="createTreeItems.length"
     class="tc-builder-sidebar-tree"
     aria-label="템플릿 생성 단계"
   >
     <button
-      v-for="stepItem in createStepItems"
-      :key="stepItem.label"
+      v-for="treeItem in createTreeItems"
+      :key="treeItem.label"
       class="tc-builder-sidebar-tree-item"
       :class="{
-        'tc-builder-is-active': stepItem.active,
-        'tc-builder-sidebar-tree-item-child': stepItem.depth === 2,
-        'tc-builder-is-last': stepItem.last
+        'tc-builder-is-active': treeItem.active,
+        'tc-builder-sidebar-tree-item-child': treeItem.depth === 2,
+        'tc-builder-is-last': treeItem.last
       }"
       type="button"
-      @click="stepItem.onClick"
+      @click="treeItem.onClick"
     >
       <span class="tc-builder-sidebar-tree-branch" aria-hidden="true"></span>
-      <span>{{ stepItem.label }}</span>
+      <span>{{ treeItem.label }}</span>
     </button>
   </div>
 </template>
@@ -27,92 +27,92 @@ import { useBuilderStore } from '~/stores/builder'
 
 const builderStore = useBuilderStore()
 
-const uploadStepItems = computed(() => [
+const uploadTreeItems = computed(() => [
   {
     label: 'HTML 업로드',
-    active: ['file-upload', 'html-editor'].includes(builderStore.step) && builderStore.selectedUploadFileType === 'HTML',
+    active: ['file-upload', 'html-editor'].includes(builderStore.currentView) && builderStore.selectedUploadFileType === 'HTML',
     depth: 2,
     last: false,
     onClick: () => builderStore.selectUploadFileType('HTML')
   },
   {
     label: '이미지 업로드',
-    active: ['file-upload', 'image-preview'].includes(builderStore.step) && builderStore.selectedUploadFileType === '이미지',
+    active: ['file-upload', 'image-preview'].includes(builderStore.currentView) && builderStore.selectedUploadFileType === '이미지',
     depth: 2,
     last: false,
     onClick: () => builderStore.selectUploadFileType('이미지')
   },
   {
     label: 'PDF 업로드',
-    active: ['file-upload', 'pdf-preview'].includes(builderStore.step) && builderStore.selectedUploadFileType === 'PDF',
+    active: ['file-upload', 'pdf-preview'].includes(builderStore.currentView) && builderStore.selectedUploadFileType === 'PDF',
     depth: 2,
     last: false,
     onClick: () => builderStore.selectUploadFileType('PDF')
   }
 ])
 
-const designStepItems = computed(() => [
+const designTreeItems = computed(() => [
   {
     label: '레이아웃 작성',
-    active: builderStore.step === 'ai-design' && builderStore.selectedDesignMethod === 'layout',
+    active: builderStore.currentView === 'ai-design' && builderStore.selectedDesignMethod === 'layout',
     depth: 2,
     last: false,
     onClick: () => builderStore.selectDesignMethod('layout')
   },
   {
     label: 'AI 프롬프트 작성',
-    active: builderStore.step === 'ai-design' && builderStore.selectedDesignMethod === 'ai-prompt',
+    active: builderStore.currentView === 'ai-design' && builderStore.selectedDesignMethod === 'ai-prompt',
     depth: 2,
     last: true,
     onClick: () => builderStore.selectDesignMethod('ai-prompt')
   }
 ])
 
-const createStepItems = computed(() => {
-  if (builderStore.step === 'start') {
+const createTreeItems = computed(() => {
+  if (builderStore.currentView === 'start') {
     return [
       {
         label: '파일 업로드',
         active: false,
         depth: 1,
         last: false,
-        onClick: () => builderStore.setStep('pdf-image-upload')
+        onClick: () => builderStore.setView('pdf-image-upload')
       },
       {
         label: '디자인 시안 작성',
         active: false,
         depth: 1,
         last: true,
-        onClick: () => builderStore.setStep('ai-design')
+        onClick: () => builderStore.setView('ai-design')
       }
     ]
   }
 
-  if (builderStore.step === 'pdf-image-upload') {
+  if (builderStore.currentView === 'pdf-image-upload') {
     return [
       {
         label: '파일 업로드',
         active: true,
         depth: 1,
         last: false,
-        onClick: () => builderStore.setStep('pdf-image-upload')
+        onClick: () => builderStore.setView('pdf-image-upload')
       },
-      ...uploadStepItems.value,
+      ...uploadTreeItems.value,
       {
         label: '디자인 시안 작성',
         active: false,
         depth: 1,
         last: true,
-        onClick: () => builderStore.setStep('ai-design')
+        onClick: () => builderStore.setView('ai-design')
       }
     ]
   }
 
   if (
-    builderStore.step === 'file-upload'
-    || builderStore.step === 'html-editor'
-    || builderStore.step === 'image-preview'
-    || builderStore.step === 'pdf-preview'
+    builderStore.currentView === 'file-upload'
+    || builderStore.currentView === 'html-editor'
+    || builderStore.currentView === 'image-preview'
+    || builderStore.currentView === 'pdf-preview'
   ) {
     return [
       {
@@ -120,54 +120,54 @@ const createStepItems = computed(() => {
         active: false,
         depth: 1,
         last: false,
-        onClick: () => builderStore.setStep('pdf-image-upload')
+        onClick: () => builderStore.setView('pdf-image-upload')
       },
-      ...uploadStepItems.value,
+      ...uploadTreeItems.value,
       {
         label: '디자인 시안 작성',
         active: false,
         depth: 1,
         last: true,
-        onClick: () => builderStore.setStep('ai-design')
+        onClick: () => builderStore.setView('ai-design')
       }
     ]
   }
 
-  if (builderStore.step === 'ai-design') {
+  if (builderStore.currentView === 'ai-design') {
     return [
       {
         label: '파일 업로드',
         active: false,
         depth: 1,
         last: false,
-        onClick: () => builderStore.setStep('pdf-image-upload')
+        onClick: () => builderStore.setView('pdf-image-upload')
       },
       {
         label: '디자인 시안 작성',
         active: true,
         depth: 1,
         last: false,
-        onClick: () => builderStore.setStep('ai-design')
+        onClick: () => builderStore.setView('ai-design')
       },
-      ...designStepItems.value
+      ...designTreeItems.value
     ]
   }
 
-  if (builderStore.step === 'preview') {
+  if (builderStore.currentView === 'preview') {
     return [
       {
         label: '파일 업로드',
         active: false,
         depth: 1,
         last: false,
-        onClick: () => builderStore.setStep('pdf-image-upload')
+        onClick: () => builderStore.setView('pdf-image-upload')
       },
       {
         label: '디자인 시안 작성',
         active: false,
         depth: 1,
         last: true,
-        onClick: () => builderStore.setStep('ai-design')
+        onClick: () => builderStore.setView('ai-design')
       }
     ]
   }
@@ -175,3 +175,4 @@ const createStepItems = computed(() => {
   return []
 })
 </script>
+

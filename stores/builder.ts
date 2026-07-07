@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 빌더 전체 Pinia store를 조립하는 진입점
  * 각 도메인별 상태 모듈을 합쳐 외부 컴포넌트에는 단일 store API를 제공
  */
@@ -8,14 +8,14 @@ import { useBuilderLayoutDesignActions } from './builder/actions/layoutDesign'
 import { useBuilderNavigationGuardActions } from './builder/actions/navigationGuard'
 import { useBuilderDesignState } from './builder/design'
 import { useBuilderEditorState } from './builder/editor'
-import { useBuilderStepState } from './builder/step'
+import { useBuilderViewState } from './builder/view'
 import { useBuilderUploadState } from './builder/upload'
 
 export type {
   BuilderDesignMethod,
   BuilderLayoutBlock,
   BuilderLayoutBlockType,
-  BuilderStep,
+  BuilderView,
   BuilderUploadedFileSummary,
   BuilderUploadFileType,
   BuilderViewportMode
@@ -27,39 +27,39 @@ export type {
 } from '~/services/html/parseHtmlDocument'
 
 export const useBuilderStore = defineStore('builder', () => {
-  const stepState = useBuilderStepState()
-  const uploadState = useBuilderUploadState(stepState.step)
-  const designState = useBuilderDesignState(stepState.step)
+  const viewState = useBuilderViewState()
+  const uploadState = useBuilderUploadState(viewState.currentView)
+  const designState = useBuilderDesignState(viewState.currentView)
   const editorState = useBuilderEditorState()
   const designToHtmlActions = useBuilderDesignToHtmlActions({
     uploadState,
     editorState,
-    stepState
+    viewState
   })
   const fileAnalysisActions = useBuilderFileAnalysisActions({
     uploadState,
     editorState,
-    stepState
+    viewState
   })
   const layoutDesignActions = useBuilderLayoutDesignActions({
     designState,
     uploadState,
     editorState,
-    stepState
+    viewState
   })
   const navigationGuardActions = useBuilderNavigationGuardActions({
     uploadState,
     designState,
-    stepState,
+    viewState,
     cancelDesignHtmlGeneration: designToHtmlActions.cancelDesignHtmlGeneration
   })
 
   return {
-    ...stepState,
+    ...viewState,
     ...uploadState,
     ...designState,
     ...editorState,
-    setStep: navigationGuardActions.setStep,
+    setView: navigationGuardActions.setView,
     selectUploadFileType: navigationGuardActions.selectUploadFileType,
     selectDesignMethod: navigationGuardActions.selectDesignMethod,
     startFileAnalysis: fileAnalysisActions.startFileAnalysis,
@@ -70,3 +70,4 @@ export const useBuilderStore = defineStore('builder', () => {
     cancelPdfHtmlGeneration: designToHtmlActions.cancelPdfHtmlGeneration
   }
 })
+

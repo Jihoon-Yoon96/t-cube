@@ -1,11 +1,11 @@
-/**
+﻿/**
  * 템플릿 생성을 위한 파일 업로드 유형, 파일 검증, 업로드 상태를 관리
  */
 
 
-import type { BuilderStep, BuilderUploadFileType, BuilderUploadedFileSummary } from './type/types'
+import type { BuilderView, BuilderUploadFileType, BuilderUploadedFileSummary } from './type/types'
 
-export function useBuilderUploadState(step: Ref<BuilderStep>) {
+export function useBuilderUploadState(currentView: Ref<BuilderView>) {
   const selectedUploadFileType = ref<BuilderUploadFileType>('HTML')
   const uploadedFile = shallowRef<File | null>(null)
   const uploadError = ref('')
@@ -25,7 +25,7 @@ export function useBuilderUploadState(step: Ref<BuilderStep>) {
   function selectUploadFileType(fileType: BuilderUploadFileType) {
     selectedUploadFileType.value = fileType
     clearUploadedFile()
-    step.value = 'file-upload'
+    currentView.value = 'file-upload'
   }
 
   function uploadDesignFile(file: File) {
@@ -116,3 +116,4 @@ export function useBuilderUploadState(step: Ref<BuilderStep>) {
     cancelFileAnalysis
   }
 }
+

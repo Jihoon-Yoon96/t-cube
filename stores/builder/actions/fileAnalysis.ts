@@ -1,31 +1,31 @@
-/**
+﻿/**
  * 업로드 파일 분석 store action 모음
  * 파일 유형별 preview 전환 및 HTML 파일 파싱 결과의 편집기 반영 흐름 관리
  */
 import { parseHtmlFile } from '~/services/html/parseHtmlDocument'
 import type { useBuilderEditorState } from '../editor'
-import type { useBuilderStepState } from '../step'
+import type { useBuilderViewState } from '../view'
 import type { useBuilderUploadState } from '../upload'
 
 type BuilderUploadState = ReturnType<typeof useBuilderUploadState>
 type BuilderEditorState = ReturnType<typeof useBuilderEditorState>
-type BuilderStepState = ReturnType<typeof useBuilderStepState>
+type BuilderViewState = ReturnType<typeof useBuilderViewState>
 
 type BuilderFileAnalysisActionParams = {
   uploadState: BuilderUploadState
   editorState: BuilderEditorState
-  stepState: BuilderStepState
+  viewState: BuilderViewState
 }
 
 /**
  * 업로드 파일 분석 액션 구성
  * HTML은 즉시 파싱하고, 이미지/PDF는 확인 화면으로 전환
  *
- * @param params 파일 분석 액션에서 공유할 업로드/편집기/단계 상태
+ * @param params 파일 분석 액션에서 공유할 업로드/편집기/화면 상태
  * @returns 업로드 파일 분석 액션
  */
 export function useBuilderFileAnalysisActions(params: BuilderFileAnalysisActionParams) {
-  const { uploadState, editorState, stepState } = params
+  const { uploadState, editorState, viewState } = params
 
   /**
    * 업로드 파일 분석 시작
@@ -38,13 +38,13 @@ export function useBuilderFileAnalysisActions(params: BuilderFileAnalysisActionP
 
     if (uploadState.selectedUploadFileType.value === '이미지') {
       uploadState.completeFileAnalysis()
-      stepState.setStep('image-preview')
+      viewState.setView('image-preview')
       return
     }
 
     if (uploadState.selectedUploadFileType.value === 'PDF') {
       uploadState.completeFileAnalysis()
-      stepState.setStep('pdf-preview')
+      viewState.setView('pdf-preview')
       return
     }
 
@@ -59,7 +59,7 @@ export function useBuilderFileAnalysisActions(params: BuilderFileAnalysisActionP
       editorState.setCurrentDocument(parsedDocument)
       editorState.markDirty(false)
       uploadState.completeFileAnalysis()
-      stepState.setStep('html-editor')
+      viewState.setView('html-editor')
     } catch (error) {
       const message = error instanceof Error
         ? error.message
@@ -73,3 +73,4 @@ export function useBuilderFileAnalysisActions(params: BuilderFileAnalysisActionP
     startFileAnalysis
   }
 }
+

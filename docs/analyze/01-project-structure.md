@@ -143,7 +143,7 @@ root
 
 웹컴포넌트 SDK 또는 iframe 연동 가능성을 고려하면, 빌더 내부 화면 전환은 Nuxt page routing에 강하게 의존하지 않는 것이 좋다.
 
-초기 구조에서는 `pages/index.vue`를 빌더 진입점으로 두고, 실제 화면 전환은 `BuilderApp` 내부 상태 또는 Pinia store의 `step` 값으로 제어한다.
+초기 구조에서는 `pages/index.vue`를 빌더 진입점으로 두고, 실제 화면 전환은 `BuilderApp` 내부 상태 또는 Pinia store의 `currentView` 값으로 제어한다.
 
 ```txt
 pages/
@@ -156,14 +156,18 @@ pages/
 </template>
 ```
 
-빌더 내부 단계는 URL이 아니라 상태로 관리한다.
+빌더 내부 화면은 URL이 아니라 상태로 관리한다. 여기서 view는 Nuxt page route가 아니라 `BuilderApp` 안에서 렌더링할 화면 단위를 의미한다.
 
 ```ts
-type BuilderStep =
+type BuilderView =
   | 'start'
   | 'html-upload'
   | 'pdf-image-upload'
+  | 'file-upload'
+  | 'image-preview'
+  | 'pdf-preview'
   | 'ai-design'
+  | 'html-editor'
   | 'editor'
   | 'preview'
 ```
@@ -195,7 +199,7 @@ Pinia store는 모든 UI 상태를 넣는 곳이 아니라, 여러 화면과 컴
 
 store에 두기 좋은 상태:
 
-- 현재 step
+- 현재 view
 - 현재 TemplateDocument
 - 선택된 element id
 - 업로드/import 상태

@@ -1,20 +1,20 @@
-/**
- * 빌더 단계 이동 guard store action 모음
+﻿/**
+ * 빌더 화면 이동 guard store action 모음
  * HTML 생성 중 화면 이탈 확인 및 이동 승인 흐름 관리
  */
 import type { useBuilderDesignState } from '../design'
-import type { useBuilderStepState } from '../step'
+import type { useBuilderViewState } from '../view'
 import type { useBuilderUploadState } from '../upload'
-import type { BuilderDesignMethod, BuilderStep, BuilderUploadFileType } from '../type/types'
+import type { BuilderDesignMethod, BuilderView, BuilderUploadFileType } from '../type/types'
 
 type BuilderUploadState = ReturnType<typeof useBuilderUploadState>
 type BuilderDesignState = ReturnType<typeof useBuilderDesignState>
-type BuilderStepState = ReturnType<typeof useBuilderStepState>
+type BuilderViewState = ReturnType<typeof useBuilderViewState>
 
 type BuilderNavigationGuardActionParams = {
   uploadState: BuilderUploadState
   designState: BuilderDesignState
-  stepState: BuilderStepState
+  viewState: BuilderViewState
   cancelDesignHtmlGeneration: () => void
 }
 
@@ -22,24 +22,24 @@ type BuilderNavigationGuardActionParams = {
  * 빌더 이동 guard 액션 구성
  * 생성 중인 AI 요청이 있으면 사용자 확인 후 상태 변경
  *
- * @param params 이동 guard에서 공유할 업로드/디자인/단계 상태와 취소 함수
- * @returns 단계/업로드 유형/디자인 방식 선택 액션
+ * @param params 이동 guard에서 공유할 업로드/디자인/화면 상태와 취소 함수
+ * @returns 화면/업로드 유형/디자인 방식 선택 액션
  */
 export function useBuilderNavigationGuardActions(params: BuilderNavigationGuardActionParams) {
-  const { uploadState, designState, stepState, cancelDesignHtmlGeneration } = params
+  const { uploadState, designState, viewState, cancelDesignHtmlGeneration } = params
 
   /**
-   * 빌더 단계 변경
+   * 빌더 화면 변경
    * HTML 생성 중이면 confirm 승인 후 이동
    *
-   * @param nextStep 이동할 다음 단계
+   * @param nextView 이동할 다음 화면
    * @returns 이동 처리 여부
    */
-  function setStep(nextStep: BuilderStep) {
-    if (nextStep === stepState.step.value) return true
+  function setView(nextView: BuilderView) {
+    if (nextView === viewState.currentView.value) return true
     if (!confirmDesignHtmlGenerationLeave()) return false
 
-    stepState.setStep(nextStep)
+    viewState.setView(nextView)
     return true
   }
 
@@ -91,8 +91,9 @@ export function useBuilderNavigationGuardActions(params: BuilderNavigationGuardA
   }
 
   return {
-    setStep,
+    setView,
     selectUploadFileType,
     selectDesignMethod
   }
 }
+

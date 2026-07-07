@@ -3,14 +3,14 @@
  */
 
 
-import type { BuilderStep, BuilderViewportMode } from './type/types'
+import type { BuilderView, BuilderViewportMode } from './type/types'
 
-export function useBuilderStepState() {
-  const step = ref<BuilderStep>('start')
+export function useBuilderViewState() {
+  const currentView = ref<BuilderView>('start')
   const activeViewport = ref<BuilderViewportMode>('desktop')
 
-  function setStep(nextStep: BuilderStep) {
-    step.value = nextStep
+  function setView(nextView: BuilderView) {
+    currentView.value = nextView
   }
 
   function setActiveViewport(nextViewport: BuilderViewportMode) {
@@ -18,13 +18,13 @@ export function useBuilderStepState() {
   }
 
   function startEditor() {
-    step.value = 'editor'
+    currentView.value = 'editor'
   }
 
   return {
-    step,
+    currentView,
     activeViewport,
-    setStep,
+    setView,
     setActiveViewport,
     startEditor
   }

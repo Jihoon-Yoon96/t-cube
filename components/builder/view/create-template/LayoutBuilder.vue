@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <section class="layout-builder-screen">
     <div class="layout-builder-header">
       <div>
@@ -277,7 +277,7 @@ const resizeState = ref<ResizeState | null>(null)
 const canvasScale = ref(1)
 const canvasBaseWidth = 960
 const canvasBaseHeight = 720
-const canvasScaleStep = 0.05
+const canvasScaleIncrement = 0.05
 
 const shapeTools: Array<{ type: BuilderLayoutBlockType, label: string, icon: string }> = [
   { type: 'rectangle', label: '사각형', icon: 'ri-rectangle-line' },
@@ -515,7 +515,7 @@ function updateSelectedSize(patch: Partial<Pick<BuilderLayoutBlock, 'width' | 'h
  * @param event 캔버스 영역의 wheel 이벤트
  */
 function handleCanvasWheel(event: WheelEvent) {
-  const direction = event.deltaY > 0 ? -canvasScaleStep : canvasScaleStep
+  const direction = event.deltaY > 0 ? -canvasScaleIncrement : canvasScaleIncrement
 
   canvasScale.value = clamp(Number((canvasScale.value + direction).toFixed(2)), 0.4, 1.8)
 }
@@ -609,7 +609,7 @@ function clearSelection() {
  */
 function handleSelectMethodAgain() {
   builderStore.selectedDesignMethod = null
-  builderStore.setStep('ai-design')
+  builderStore.setView('ai-design')
 }
 
 /**
@@ -1100,3 +1100,4 @@ onBeforeUnmount(() => {
   }
 }
 </style>
+

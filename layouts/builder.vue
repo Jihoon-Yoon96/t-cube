@@ -3,7 +3,7 @@
     <div class="tc-builder-shell">
       <BuilderSidebar
         :active-mode="activeMode"
-        @select-create="builderStore.setStep('start')"
+        @select-create="builderStore.setView('start')"
         @select-edit="builderStore.startEditor()"
       />
 
@@ -23,7 +23,7 @@
             :active-viewport="builderStore.activeViewport"
             :viewport-modes="viewportModes"
             @update:active-viewport="builderStore.setActiveViewport"
-            @preview="builderStore.setStep('preview')"
+            @preview="builderStore.setView('preview')"
             @save="handleSave"
           />
 
@@ -55,12 +55,13 @@ const viewportModes: Array<{
   { key: 'mobile', label: 'Mobile viewport', shortLabel: 'Mobile', icon: 'ri-smartphone-line' }
 ]
 
-const activeMode = computed(() => builderStore.step === 'editor' ? 'edit' : 'create')
-const showTopToolbar = computed(() => builderStore.step === 'html-editor')
+const activeMode = computed(() => builderStore.currentView === 'editor' ? 'edit' : 'create')
+const showTopToolbar = computed(() => builderStore.currentView === 'html-editor')
 
 function handleSave() {
   builderStore.markDirty(false)
 }
 </script>
+
 
 

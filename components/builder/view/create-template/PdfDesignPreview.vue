@@ -1,10 +1,10 @@
-<template>
+﻿<template>
   <section class="image-design-preview-screen">
     <div class="image-design-preview-header">
       <div>
-        <span class="section-title">IMAGE DESIGN</span>
-        <h1>업로드한 디자인 시안을 확인해주세요</h1>
-        <p>이미지 시안을 기반으로 HTML 템플릿을 생성하기 전, 파일 정보와 화면을 확인할 수 있습니다.</p>
+        <span class="section-title">PDF DESIGN</span>
+        <h1>업로드한 PDF 시안을 확인해주세요</h1>
+        <p>PDF 시안을 기반으로 HTML 템플릿을 생성하기 전, 파일 정보와 화면을 확인할 수 있습니다.</p>
       </div>
 
       <div class="image-design-preview-actions">
@@ -16,7 +16,7 @@
           class="primary-action"
           :class="{ 'is-loading': builderStore.importStatus === 'importing' }"
           type="button"
-          :disabled="builderStore.importStatus === 'importing'"
+          :disabled="isGenerateButtonDisabled"
           @click="handleGenerateHtml"
         >
           <TcubeIcon
@@ -31,14 +31,16 @@
     <p v-if="builderStore.uploadError" class="upload-message error">
       {{ builderStore.uploadError }}
     </p>
+    <p v-else-if="pdfPageMessage" class="upload-message" :class="{ error: !canGenerateHtml }">
+      {{ pdfPageMessage }}
+    </p>
 
-    <div v-if="imageUrl" class="image-design-preview-layout">
-      <div class="image-design-preview-canvas">
-        <img
-          :src="imageUrl"
-          alt="업로드한 디자인 시안 미리보기"
-          @load="handleImageLoad"
-        >
+    <div v-if="pdfUrl" class="image-design-preview-layout">
+      <div class="image-design-preview-canvas pdf-design-preview-canvas">
+        <iframe
+          :src="pdfUrl"
+          title="업로드한 PDF 시안 미리보기"
+        />
       </div>
 
       <aside class="image-design-preview-info">
@@ -57,17 +59,17 @@
             <dd>{{ fileSizeLabel }}</dd>
           </div>
           <div>
-            <dt>이미지 해상도</dt>
-            <dd>{{ imageSizeLabel }}</dd>
+            <dt>페이지 수</dt>
+            <dd>{{ pdfPageCountLabel }}</dd>
           </div>
         </dl>
       </aside>
     </div>
 
     <div v-else class="body-placeholder">
-      <span class="section-title">IMAGE DESIGN</span>
-      <h1>미리볼 이미지 파일이 없습니다</h1>
-      <p>이미지 파일을 다시 업로드해주세요.</p>
+      <span class="section-title">PDF DESIGN</span>
+      <h1>미리볼 PDF 파일이 없습니다</h1>
+      <p>PDF 파일을 다시 업로드해주세요.</p>
     </div>
   </section>
 </template>
@@ -76,9 +78,9 @@
 import { useBuilderStore } from '~/stores/builder'
 
 const builderStore = useBuilderStore()
-const imageUrl = ref('')
-const imageWidth = ref(0)
-const imageHeight = ref(0)
+const pdfUrl = ref('')
+const pdfPageCount = ref(0)
+const isCheckingPdfPageCount = ref(false)
 const generationElapsedSeconds = ref(0)
 let generationTimerId: ReturnType<typeof setInterval> | null = null
 
@@ -87,13 +89,37 @@ const generateButtonLabel = computed(() => {
     return `HTML 생성 중 ${generationElapsedSeconds.value}s`
   }
 
+  if (isCheckingPdfPageCount.value) return '페이지 확인 중'
+
   return 'HTML 생성'
+})
+
+const canGenerateHtml = computed(() => pdfPageCount.value === 1)
+const isGenerateButtonDisabled = computed(() => (
+  builderStore.importStatus === 'importing'
+  || isCheckingPdfPageCount.value
+  || !canGenerateHtml.value
+))
+
+const pdfPageCountLabel = computed(() => {
+  if (isCheckingPdfPageCount.value) return '확인 중'
+  if (!pdfPageCount.value) return '-'
+
+  return `${pdfPageCount.value}페이지`
+})
+
+const pdfPageMessage = computed(() => {
+  if (isCheckingPdfPageCount.value) return 'PDF 페이지 수를 확인하고 있습니다.'
+  if (!pdfPageCount.value) return ''
+  if (pdfPageCount.value === 1) return ''
+
+  return '현재는 1페이지 PDF만 HTML로 변환할 수 있습니다. 2페이지 이상인 PDF는 페이지 선택 기능을 연결한 뒤 지원할 예정입니다.'
 })
 
 const fileTypeLabel = computed(() => {
   const extension = builderStore.uploadedFileSummary?.extension
 
-  return extension ? `.${extension.toUpperCase()}` : '이미지'
+  return extension ? `.${extension.toUpperCase()}` : 'PDF'
 })
 
 const fileSizeLabel = computed(() => {
@@ -104,57 +130,69 @@ const fileSizeLabel = computed(() => {
   return formatFileSize(size)
 })
 
-const imageSizeLabel = computed(() => {
-  if (!imageWidth.value || !imageHeight.value) return '확인 중'
-
-  return `${imageWidth.value} x ${imageHeight.value}px`
-})
-
 /**
- * 업로드된 이미지 파일을 브라우저에서 표시할 수 있는 object URL로 변환
+ * 업로드된 PDF 파일을 브라우저에서 표시할 수 있는 object URL로 변환
  */
-function createImagePreviewUrl() {
-  revokeImagePreviewUrl()
+function createPdfPreviewUrl() {
+  revokePdfPreviewUrl()
+  pdfPageCount.value = 0
 
   if (!builderStore.uploadedFile) return
 
-  imageUrl.value = URL.createObjectURL(builderStore.uploadedFile)
+  pdfUrl.value = URL.createObjectURL(builderStore.uploadedFile)
+  readPdfPageCount(builderStore.uploadedFile)
 }
 
 /**
- * 이미지 미리보기에 사용한 object URL을 해제
+ * PDF 미리보기에 사용한 object URL을 해제
  */
-function revokeImagePreviewUrl() {
-  if (!imageUrl.value) return
+function revokePdfPreviewUrl() {
+  if (!pdfUrl.value) return
 
-  URL.revokeObjectURL(imageUrl.value)
-  imageUrl.value = ''
+  URL.revokeObjectURL(pdfUrl.value)
+  pdfUrl.value = ''
 }
 
 /**
- * 이미지 로드 후 원본 해상도 정보를 저장
- *
- * @param event 이미지 로드가 완료된 img 요소의 load 이벤트
- */
-function handleImageLoad(event: Event) {
-  const imageElement = event.target as HTMLImageElement
-
-  imageWidth.value = imageElement.naturalWidth
-  imageHeight.value = imageElement.naturalHeight
-}
-
-/**
- * 이미지 기반 HTML 생성 API를 호출하고 생성 결과를 HTML 편집기로 전달
+ * PDF 기반 HTML 생성 API를 호출하고 생성 결과를 HTML 편집기로 전달
  */
 function handleGenerateHtml() {
-  builderStore.generateHtmlFromUploadedImage()
+  if (!canGenerateHtml.value) return
+
+  builderStore.generateHtmlFromUploadedPdf()
 }
 
 /**
- * HTML 생성 요청이 진행 중이면 취소한 뒤 파일 업로드 단계로 이동
+ * PDF 문서의 전체 페이지 수를 읽어 변환 가능 여부 판단에 사용
+ *
+ * @param file 페이지 수를 확인할 PDF 파일
+ */
+async function readPdfPageCount(file: File) {
+  isCheckingPdfPageCount.value = true
+
+  try {
+    const pdfjs = await import('pdfjs-dist')
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.mjs', import.meta.url).toString()
+
+    const loadingTask = pdfjs.getDocument({
+      data: await file.arrayBuffer()
+    })
+    const pdfDocument = await loadingTask.promise
+
+    pdfPageCount.value = pdfDocument.numPages
+    await loadingTask.destroy()
+  } catch {
+    pdfPageCount.value = 0
+  } finally {
+    isCheckingPdfPageCount.value = false
+  }
+}
+
+/**
+ * HTML 생성 요청이 진행 중이면 확인 후 파일 업로드 단계로 이동
  */
 function handleSelectFileAgain() {
-  builderStore.setStep('file-upload')
+  builderStore.setView('file-upload')
 }
 
 /**
@@ -208,9 +246,7 @@ function formatFileSize(size: number) {
 watch(
   () => builderStore.uploadedFile,
   () => {
-    imageWidth.value = 0
-    imageHeight.value = 0
-    createImagePreviewUrl()
+    createPdfPreviewUrl()
   }
 )
 
@@ -227,7 +263,7 @@ watch(
 )
 
 onMounted(() => {
-  createImagePreviewUrl()
+  createPdfPreviewUrl()
   window.addEventListener('beforeunload', handleBeforeUnload)
 })
 
@@ -235,11 +271,11 @@ onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
 
   if (builderStore.importStatus === 'importing') {
-    builderStore.cancelImageHtmlGeneration()
+    builderStore.cancelPdfHtmlGeneration()
   }
 
   stopGenerationTimer()
-  revokeImagePreviewUrl()
+  revokePdfPreviewUrl()
 })
 
 onBeforeRouteLeave(() => {
@@ -248,7 +284,7 @@ onBeforeRouteLeave(() => {
   const confirmed = window.confirm('AI가 HTML을 생성 중입니다. 정말 나가시겠습니까?')
 
   if (confirmed) {
-    builderStore.cancelImageHtmlGeneration()
+    builderStore.cancelPdfHtmlGeneration()
   }
 
   return confirmed
@@ -274,3 +310,4 @@ onBeforeRouteLeave(() => {
   }
 }
 </style>
+

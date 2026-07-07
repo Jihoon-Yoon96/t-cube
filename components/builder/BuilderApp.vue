@@ -1,15 +1,15 @@
-<template>
-  <CreateTemplateStart v-if="builderStore.step === 'start'" />
-  <CreateTemplateSelectFileType v-else-if="builderStore.step === 'pdf-image-upload'" />
-  <CreateTemplateUploadFile v-else-if="builderStore.step === 'file-upload'" />
-  <CreateTemplateImageDesignPreview v-else-if="builderStore.step === 'image-preview'" />
-  <CreateTemplatePdfDesignPreview v-else-if="builderStore.step === 'pdf-preview'" />
+﻿<template>
+  <CreateTemplateStart v-if="builderStore.currentView === 'start'" />
+  <CreateTemplateSelectFileType v-else-if="builderStore.currentView === 'pdf-image-upload'" />
+  <CreateTemplateUploadFile v-else-if="builderStore.currentView === 'file-upload'" />
+  <CreateTemplateImageDesignPreview v-else-if="builderStore.currentView === 'image-preview'" />
+  <CreateTemplatePdfDesignPreview v-else-if="builderStore.currentView === 'pdf-preview'" />
   <CreateTemplateLayoutBuilder
-    v-else-if="builderStore.step === 'ai-design' && builderStore.selectedDesignMethod === 'layout'"
+    v-else-if="builderStore.currentView === 'ai-design' && builderStore.selectedDesignMethod === 'layout'"
   />
-  <CreateTemplateHowToMakeDesign v-else-if="builderStore.step === 'ai-design'" />
-  <CreateTemplateHtmlDocumentEditor v-else-if="builderStore.step === 'html-editor'" />
-  <EditTemplateSelectTemplate v-else-if="builderStore.step === 'editor'" />
+  <CreateTemplateHowToMakeDesign v-else-if="builderStore.currentView === 'ai-design'" />
+  <CreateTemplateHtmlDocumentEditor v-else-if="builderStore.currentView === 'html-editor'" />
+  <EditTemplateSelectTemplate v-else-if="builderStore.currentView === 'editor'" />
 
   <div v-else class="body-placeholder">
     <span class="section-title">WORKSPACE</span>
@@ -19,15 +19,15 @@
 </template>
 
 <script setup lang="ts">
-import CreateTemplateHowToMakeDesign from './steps/create-template/HowToMakeDesign.vue'
-import CreateTemplateHtmlDocumentEditor from './steps/create-template/HtmlDocumentEditor.vue'
-import CreateTemplateImageDesignPreview from './steps/create-template/ImageDesignPreview.vue'
-import CreateTemplateLayoutBuilder from './steps/create-template/LayoutBuilder.vue'
-import CreateTemplatePdfDesignPreview from './steps/create-template/PdfDesignPreview.vue'
-import CreateTemplateSelectFileType from './steps/create-template/SelectFileType.vue'
-import CreateTemplateStart from './steps/create-template/Start.vue'
-import CreateTemplateUploadFile from './steps/create-template/UploadFile.vue'
-import EditTemplateSelectTemplate from './steps/edit-template/SelectTemplate.vue'
+import CreateTemplateHowToMakeDesign from './view/create-template/HowToMakeDesign.vue'
+import CreateTemplateHtmlDocumentEditor from './view/create-template/HtmlDocumentEditor.vue'
+import CreateTemplateImageDesignPreview from './view/create-template/ImageDesignPreview.vue'
+import CreateTemplateLayoutBuilder from './view/create-template/LayoutBuilder.vue'
+import CreateTemplatePdfDesignPreview from './view/create-template/PdfDesignPreview.vue'
+import CreateTemplateSelectFileType from './view/create-template/SelectFileType.vue'
+import CreateTemplateStart from './view/create-template/Start.vue'
+import CreateTemplateUploadFile from './view/create-template/UploadFile.vue'
+import EditTemplateSelectTemplate from './view/edit-template/SelectTemplate.vue'
 import { useBuilderStore } from '~/stores/builder'
 
 const builderStore = useBuilderStore()
@@ -37,14 +37,14 @@ const activePage = {
 }
 
 const stageTitle = computed(() => {
-  if (builderStore.step === 'editor') return '템플릿 수정'
-  if (builderStore.step === 'preview') return '미리보기'
+  if (builderStore.currentView === 'editor') return '템플릿 수정'
+  if (builderStore.currentView === 'preview') return '미리보기'
 
   return '템플릿 생성'
 })
 
 const stageSubtitle = computed(() => {
-  if (builderStore.step === 'editor') {
+  if (builderStore.currentView === 'editor') {
     return `${activePage.width} x ${activePage.height}`
   }
 
@@ -1027,3 +1027,4 @@ const stageSubtitle = computed(() => {
   }
 }
 </style>
+

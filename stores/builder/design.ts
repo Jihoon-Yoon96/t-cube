@@ -1,12 +1,12 @@
-/**
- * 템플릿 생성 단계 중 "디자인 시안 작성" 흐름에서
+﻿/**
+ * 템플릿 생성 화면 중 "디자인 시안 작성" 흐름에서
  * 사용자가 선택한 작성 방식과 AI 생성 상태를 관리
  */
 
 
-import type { BuilderDesignMethod, BuilderLayoutBlock, BuilderLayoutBlockType, BuilderStep } from './type/types'
+import type { BuilderDesignMethod, BuilderLayoutBlock, BuilderLayoutBlockType, BuilderView } from './type/types'
 
-export function useBuilderDesignState(step: Ref<BuilderStep>) {
+export function useBuilderDesignState(currentView: Ref<BuilderView>) {
   const selectedDesignMethod = ref<BuilderDesignMethod | null>(null)
   const aiStatus = ref<'idle' | 'generating' | 'complete' | 'error'>('idle')
   const layoutBlocks = ref<BuilderLayoutBlock[]>([])
@@ -18,7 +18,7 @@ export function useBuilderDesignState(step: Ref<BuilderStep>) {
 
   function selectDesignMethod(method: BuilderDesignMethod) {
     selectedDesignMethod.value = method
-    step.value = 'ai-design'
+    currentView.value = 'ai-design'
   }
 
   function addLayoutBlock(type: BuilderLayoutBlockType) {
@@ -231,3 +231,4 @@ export function useBuilderDesignState(step: Ref<BuilderStep>) {
     clearLayoutBlocks
   }
 }
+
