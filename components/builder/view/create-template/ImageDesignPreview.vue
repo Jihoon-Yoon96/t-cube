@@ -14,22 +14,22 @@
         </button>
         <button
           class="primary-action"
-          :class="{ 'is-loading': builderStore.importStatus === 'importing' }"
+          :class="{ 'is-loading': builderUpload.importStatus === 'importing' }"
           type="button"
-          :disabled="builderStore.importStatus === 'importing'"
+          :disabled="builderUpload.importStatus === 'importing'"
           @click="handleGenerateHtml"
         >
           <TcubeIcon
-            :class="{ 'rotating-icon': builderStore.importStatus === 'importing' }"
-            :icon="builderStore.importStatus === 'importing' ? 'ri-loader-4-line' : 'ri-code-s-slash-line'"
+            :class="{ 'rotating-icon': builderUpload.importStatus === 'importing' }"
+            :icon="builderUpload.importStatus === 'importing' ? 'ri-loader-4-line' : 'ri-code-s-slash-line'"
           />
           <span>{{ generateButtonLabel }}</span>
         </button>
       </div>
     </div>
 
-    <p v-if="builderStore.uploadError" class="upload-message error">
-      {{ builderStore.uploadError }}
+    <p v-if="builderUpload.uploadError" class="upload-message error">
+      {{ builderUpload.uploadError }}
     </p>
 
     <div v-if="imageUrl" class="image-design-preview-layout">
@@ -46,7 +46,7 @@
         <dl>
           <div>
             <dt>파일명</dt>
-            <dd>{{ builderStore.uploadedFileSummary?.name }}</dd>
+            <dd>{{ builderUpload.uploadedFileSummary?.name }}</dd>
           </div>
           <div>
             <dt>파일 형식</dt>
@@ -73,9 +73,13 @@
 </template>
 
 <script setup lang="ts">
-import { useBuilderStore } from '~/stores/builder'
+import { useBuilderHtmlGeneration } from '~/composables/html/useBuilderHtmlGeneration'
+import { useBuilderUpload } from '~/composables/upload/useBuilderUpload'
+import { useBuilderView } from '~/composables/view/useBuilderView'
 
-const builderStore = useBuilderStore()
+const builderUpload = useBuilderUpload()
+const builderView = useBuilderView()
+const builderHtmlGeneration = useBuilderHtmlGeneration()
 const imageUrl = ref('')
 const imageWidth = ref(0)
 const imageHeight = ref(0)
@@ -83,7 +87,7 @@ const generationElapsedSeconds = ref(0)
 let generationTimerId: ReturnType<typeof setInterval> | null = null
 
 const generateButtonLabel = computed(() => {
-  if (builderStore.importStatus === 'importing') {
+  if (builderUpload.importStatus === 'importing') {
     return `HTML 생성 중 ${generationElapsedSeconds.value}s`
   }
 
@@ -91,13 +95,13 @@ const generateButtonLabel = computed(() => {
 })
 
 const fileTypeLabel = computed(() => {
-  const extension = builderStore.uploadedFileSummary?.extension
+  const extension = builderUpload.uploadedFileSummary?.extension
 
   return extension ? `.${extension.toUpperCase()}` : '이미지'
 })
 
 const fileSizeLabel = computed(() => {
-  const size = builderStore.uploadedFileSummary?.size
+  const size = builderUpload.uploadedFileSummary?.size
 
   if (!size) return '-'
 
@@ -116,9 +120,9 @@ const imageSizeLabel = computed(() => {
 function createImagePreviewUrl() {
   revokeImagePreviewUrl()
 
-  if (!builderStore.uploadedFile) return
+  if (!builderUpload.uploadedFile) return
 
-  imageUrl.value = URL.createObjectURL(builderStore.uploadedFile)
+  imageUrl.value = URL.createObjectURL(builderUpload.uploadedFile)
 }
 
 /**
@@ -147,14 +151,14 @@ function handleImageLoad(event: Event) {
  * 이미지 기반 HTML 생성 API를 호출하고 생성 결과를 HTML 편집기로 전달
  */
 function handleGenerateHtml() {
-  builderStore.generateHtmlFromUploadedImage()
+  builderHtmlGeneration.generateHtmlFromUploadedImage()
 }
 
 /**
  * HTML 생성 요청이 진행 중이면 취소한 뒤 파일 업로드 단계로 이동
  */
 function handleSelectFileAgain() {
-  builderStore.setView('file-upload')
+  builderView.setView('file-upload')
 }
 
 /**
@@ -163,7 +167,7 @@ function handleSelectFileAgain() {
  * @param event 브라우저 이탈 직전에 발생하는 beforeunload 이벤트
  */
 function handleBeforeUnload(event: BeforeUnloadEvent) {
-  if (builderStore.importStatus !== 'importing') return
+  if (builderUpload.importStatus !== 'importing') return
 
   event.preventDefault()
   event.returnValue = ''
@@ -206,7 +210,7 @@ function formatFileSize(size: number) {
 }
 
 watch(
-  () => builderStore.uploadedFile,
+  () => builderUpload.uploadedFile,
   () => {
     imageWidth.value = 0
     imageHeight.value = 0
@@ -215,7 +219,7 @@ watch(
 )
 
 watch(
-  () => builderStore.importStatus,
+  () => builderUpload.importStatus,
   (status) => {
     if (status === 'importing') {
       startGenerationTimer()
@@ -234,8 +238,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
 
-  if (builderStore.importStatus === 'importing') {
-    builderStore.cancelImageHtmlGeneration()
+  if (builderUpload.importStatus === 'importing') {
+    builderHtmlGeneration.cancelImageHtmlGeneration()
   }
 
   stopGenerationTimer()
@@ -243,12 +247,12 @@ onBeforeUnmount(() => {
 })
 
 onBeforeRouteLeave(() => {
-  if (builderStore.importStatus !== 'importing') return true
+  if (builderUpload.importStatus !== 'importing') return true
 
   const confirmed = window.confirm('AI가 HTML을 생성 중입니다. 정말 나가시겠습니까?')
 
   if (confirmed) {
-    builderStore.cancelImageHtmlGeneration()
+    builderHtmlGeneration.cancelImageHtmlGeneration()
   }
 
   return confirmed
@@ -274,4 +278,3 @@ onBeforeRouteLeave(() => {
   }
 }
 </style>
-

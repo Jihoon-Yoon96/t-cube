@@ -23,79 +23,81 @@
 </template>
 
 <script setup lang="ts">
-import { useBuilderStore } from '~/stores/builder'
+import { useBuilderUpload } from '~/composables/upload/useBuilderUpload'
+import { useBuilderView } from '~/composables/view/useBuilderView'
 
-const builderStore = useBuilderStore()
+const builderView = useBuilderView()
+const builderUpload = useBuilderUpload()
 
 const uploadTreeItems = computed(() => [
   {
     label: 'HTML 업로드',
-    active: ['file-upload', 'html-editor'].includes(builderStore.currentView) && builderStore.selectedUploadFileType === 'HTML',
+    active: ['file-upload', 'html-editor'].includes(builderView.currentView) && builderUpload.selectedUploadFileType === 'HTML',
     depth: 2,
     last: false,
-    onClick: () => builderStore.selectUploadFileType('HTML')
+    onClick: () => builderUpload.selectUploadFileType('HTML')
   },
   {
     label: '이미지 업로드',
-    active: ['file-upload', 'image-preview'].includes(builderStore.currentView) && builderStore.selectedUploadFileType === '이미지',
+    active: ['file-upload', 'image-preview'].includes(builderView.currentView) && builderUpload.selectedUploadFileType === '이미지',
     depth: 2,
     last: false,
-    onClick: () => builderStore.selectUploadFileType('이미지')
+    onClick: () => builderUpload.selectUploadFileType('이미지')
   },
   {
     label: 'PDF 업로드',
-    active: ['file-upload', 'pdf-preview'].includes(builderStore.currentView) && builderStore.selectedUploadFileType === 'PDF',
+    active: ['file-upload', 'pdf-preview'].includes(builderView.currentView) && builderUpload.selectedUploadFileType === 'PDF',
     depth: 2,
     last: false,
-    onClick: () => builderStore.selectUploadFileType('PDF')
+    onClick: () => builderUpload.selectUploadFileType('PDF')
   }
 ])
 
 const designTreeItems = computed(() => [
   {
     label: '레이아웃 작성',
-    active: builderStore.currentView === 'layout-design',
+    active: builderView.currentView === 'layout-design',
     depth: 2,
     last: false,
-    onClick: () => builderStore.selectDesignMethod('layout')
+    onClick: () => builderView.selectDesignMethod('layout')
   },
   {
     label: 'AI 프롬프트 작성',
-    active: builderStore.currentView === 'ai-prompt-design',
+    active: builderView.currentView === 'ai-prompt-design',
     depth: 2,
     last: true,
-    onClick: () => builderStore.selectDesignMethod('ai-prompt')
+    onClick: () => builderView.selectDesignMethod('ai-prompt')
   }
 ])
 
 const createTreeItems = computed(() => {
-  if (builderStore.currentView === 'start') {
+  if (builderView.currentView === 'start') {
     return [
       {
         label: '파일 업로드',
         active: false,
         depth: 1,
         last: false,
-        onClick: () => builderStore.setView('pdf-image-upload')
+        onClick: () => builderView.setView('pdf-image-upload')
       },
       {
         label: '디자인 시안 작성',
         active: false,
         depth: 1,
         last: true,
-        onClick: () => builderStore.setView('design-method')
+        onClick: () => builderView.setView('design-method')
       }
     ]
   }
 
-  if (builderStore.currentView === 'pdf-image-upload') {
+  if (builderView.currentView === 'pdf-image-upload') {
     return [
       {
         label: '파일 업로드',
         active: true,
         depth: 1,
         last: false,
-        onClick: () => builderStore.setView('pdf-image-upload')
+        onClick: () => builderView.setView('pdf-image-upload')
       },
       ...uploadTreeItems.value,
       {
@@ -103,16 +105,16 @@ const createTreeItems = computed(() => {
         active: false,
         depth: 1,
         last: true,
-        onClick: () => builderStore.setView('design-method')
+        onClick: () => builderView.setView('design-method')
       }
     ]
   }
 
   if (
-    builderStore.currentView === 'file-upload'
-    || builderStore.currentView === 'html-editor'
-    || builderStore.currentView === 'image-preview'
-    || builderStore.currentView === 'pdf-preview'
+    builderView.currentView === 'file-upload'
+    || builderView.currentView === 'html-editor'
+    || builderView.currentView === 'image-preview'
+    || builderView.currentView === 'pdf-preview'
   ) {
     return [
       {
@@ -120,7 +122,7 @@ const createTreeItems = computed(() => {
         active: false,
         depth: 1,
         last: false,
-        onClick: () => builderStore.setView('pdf-image-upload')
+        onClick: () => builderView.setView('pdf-image-upload')
       },
       ...uploadTreeItems.value,
       {
@@ -128,15 +130,15 @@ const createTreeItems = computed(() => {
         active: false,
         depth: 1,
         last: true,
-        onClick: () => builderStore.setView('design-method')
+        onClick: () => builderView.setView('design-method')
       }
     ]
   }
 
   if (
-    builderStore.currentView === 'design-method'
-    || builderStore.currentView === 'layout-design'
-    || builderStore.currentView === 'ai-prompt-design'
+    builderView.currentView === 'design-method'
+    || builderView.currentView === 'layout-design'
+    || builderView.currentView === 'ai-prompt-design'
   ) {
     return [
       {
@@ -144,34 +146,34 @@ const createTreeItems = computed(() => {
         active: false,
         depth: 1,
         last: false,
-        onClick: () => builderStore.setView('pdf-image-upload')
+        onClick: () => builderView.setView('pdf-image-upload')
       },
       {
         label: '디자인 시안 작성',
-        active: builderStore.currentView === 'design-method',
+        active: builderView.currentView === 'design-method',
         depth: 1,
         last: false,
-        onClick: () => builderStore.setView('design-method')
+        onClick: () => builderView.setView('design-method')
       },
       ...designTreeItems.value
     ]
   }
 
-  if (builderStore.currentView === 'preview') {
+  if (builderView.currentView === 'preview') {
     return [
       {
         label: '파일 업로드',
         active: false,
         depth: 1,
         last: false,
-        onClick: () => builderStore.setView('pdf-image-upload')
+        onClick: () => builderView.setView('pdf-image-upload')
       },
       {
         label: '디자인 시안 작성',
         active: false,
         depth: 1,
         last: true,
-        onClick: () => builderStore.setView('design-method')
+        onClick: () => builderView.setView('design-method')
       }
     ]
   }
@@ -179,4 +181,3 @@ const createTreeItems = computed(() => {
   return []
 })
 </script>
-

@@ -15,8 +15,8 @@
         <button
           class="primary-action"
           type="button"
-          :disabled="!builderStore.layoutBlocks.length"
-          @click="builderStore.generateHtmlFromLayoutDesign"
+          :disabled="!builderLayout.layoutBlocks.length"
+          @click="builderLayout.generateHtmlFromLayoutDesign"
         >
           <TcubeIcon icon="ri-code-s-slash-line" />
           <span>HTML 생성</span>
@@ -34,7 +34,7 @@
             v-for="tool in shapeTools"
             :key="tool.type"
             type="button"
-            @click="builderStore.addLayoutBlock(tool.type)"
+            @click="builderLayout.addLayoutBlock(tool.type)"
           >
             <TcubeIcon :icon="tool.icon" />
             <span>{{ tool.label }}</span>
@@ -47,7 +47,7 @@
             v-for="tool in componentTools"
             :key="tool.type"
             type="button"
-            @click="builderStore.addLayoutBlock(tool.type)"
+            @click="builderLayout.addLayoutBlock(tool.type)"
           >
             <TcubeIcon :icon="tool.icon" />
             <span>{{ tool.label }}</span>
@@ -78,14 +78,14 @@
                 @pointerdown.self="clearSelection"
               >
                 <button
-                  v-for="block in builderStore.layoutBlocks"
+                  v-for="block in builderLayout.layoutBlocks"
                   :key="block.id"
                   class="layout-builder-block"
                   :class="[
                     `layout-builder-block-${block.type}`,
                     {
                       'is-component': isComponentBlock(block.type),
-                      'is-selected': block.id === builderStore.selectedLayoutBlockId
+                      'is-selected': block.id === builderLayout.selectedLayoutBlockId
                     }
                   ]"
                   type="button"
@@ -98,27 +98,27 @@
                   </span>
 
                   <span
-                    v-if="block.id === builderStore.selectedLayoutBlockId"
+                    v-if="block.id === builderLayout.selectedLayoutBlockId"
                     class="resize-handle resize-handle-n"
                     @pointerdown.stop="handleResizePointerDown($event, block.id, 'n')"
                   />
                   <span
-                    v-if="block.id === builderStore.selectedLayoutBlockId"
+                    v-if="block.id === builderLayout.selectedLayoutBlockId"
                     class="resize-handle resize-handle-e"
                     @pointerdown.stop="handleResizePointerDown($event, block.id, 'e')"
                   />
                   <span
-                    v-if="block.id === builderStore.selectedLayoutBlockId"
+                    v-if="block.id === builderLayout.selectedLayoutBlockId"
                     class="resize-handle resize-handle-s"
                     @pointerdown.stop="handleResizePointerDown($event, block.id, 's')"
                   />
                   <span
-                    v-if="block.id === builderStore.selectedLayoutBlockId"
+                    v-if="block.id === builderLayout.selectedLayoutBlockId"
                     class="resize-handle resize-handle-w"
                     @pointerdown.stop="handleResizePointerDown($event, block.id, 'w')"
                   />
                   <span
-                    v-if="block.id === builderStore.selectedLayoutBlockId"
+                    v-if="block.id === builderLayout.selectedLayoutBlockId"
                     class="resize-handle resize-handle-se"
                     @pointerdown.stop="handleResizePointerDown($event, block.id, 'se')"
                   />
@@ -126,7 +126,7 @@
               </div>
             </div>
 
-            <div v-if="!builderStore.layoutBlocks.length" class="layout-builder-empty">
+            <div v-if="!builderLayout.layoutBlocks.length" class="layout-builder-empty">
               <TcubeIcon icon="ri-layout-2-line" />
               <strong>블록을 추가해 레이아웃을 그려보세요</strong>
               <span>왼쪽 도구에서 기본 도형과 컴포넌트를 추가할 수 있습니다.</span>
@@ -200,7 +200,7 @@
               <button
                 type="button"
                 :disabled="!canMoveSelectedBlockBackward"
-                @click="builderStore.moveLayoutBlockBackward(selectedBlock.id)"
+                @click="builderLayout.moveLayoutBlockBackward(selectedBlock.id)"
               >
                 <TcubeIcon icon="ri-arrow-down-line" />
                 <span>뒤로</span>
@@ -208,7 +208,7 @@
               <button
                 type="button"
                 :disabled="!canMoveSelectedBlockForward"
-                @click="builderStore.moveLayoutBlockForward(selectedBlock.id)"
+                @click="builderLayout.moveLayoutBlockForward(selectedBlock.id)"
               >
                 <TcubeIcon icon="ri-arrow-up-line" />
                 <span>위로</span>
@@ -216,7 +216,7 @@
               <button
                 type="button"
                 :disabled="!canMoveSelectedBlockForward"
-                @click="builderStore.moveLayoutBlockToFront(selectedBlock.id)"
+                @click="builderLayout.moveLayoutBlockToFront(selectedBlock.id)"
               >
                 <TcubeIcon icon="ri-bring-to-front" />
                 <span>맨 위로</span>
@@ -224,7 +224,7 @@
               <button
                 type="button"
                 :disabled="!canMoveSelectedBlockBackward"
-                @click="builderStore.moveLayoutBlockToBack(selectedBlock.id)"
+                @click="builderLayout.moveLayoutBlockToBack(selectedBlock.id)"
               >
                 <TcubeIcon icon="ri-send-to-back" />
                 <span>맨 뒤로</span>
@@ -232,7 +232,7 @@
             </div>
           </div>
 
-          <button class="layout-builder-delete" type="button" @click="builderStore.removeLayoutBlock(selectedBlock.id)">
+          <button class="layout-builder-delete" type="button" @click="builderLayout.removeLayoutBlock(selectedBlock.id)">
             <TcubeIcon icon="ri-delete-bin-line" />
             <span>삭제</span>
           </button>
@@ -245,7 +245,8 @@
 </template>
 
 <script setup lang="ts">
-import { useBuilderStore } from '~/stores/builder'
+import { useBuilderLayout } from '~/composables/layout/useBuilderLayout'
+import { useBuilderView } from '~/composables/view/useBuilderView'
 import type { BuilderLayoutBlock, BuilderLayoutBlockType } from '~/stores/builder'
 
 type DragState = {
@@ -269,7 +270,8 @@ type ResizeState = {
   startHeight: number
 }
 
-const builderStore = useBuilderStore()
+const builderLayout = useBuilderLayout()
+const builderView = useBuilderView()
 const canvasWrapRef = ref<HTMLElement | null>(null)
 const canvasRef = ref<HTMLElement | null>(null)
 const dragState = ref<DragState | null>(null)
@@ -295,17 +297,17 @@ const componentTools: Array<{ type: BuilderLayoutBlockType, label: string, icon:
   { type: 'card', label: '카드', icon: 'ri-layout-grid-line' }
 ]
 
-const selectedBlock = computed(() => builderStore.selectedLayoutBlock)
+const selectedBlock = computed(() => builderLayout.selectedLayoutBlock)
 const selectedBlockLayerIndex = computed(() => {
   if (!selectedBlock.value) return -1
 
-  return [...builderStore.layoutBlocks]
+  return [...builderLayout.layoutBlocks]
     .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))
     .findIndex((block) => block.id === selectedBlock.value?.id)
 })
 const canMoveSelectedBlockBackward = computed(() => selectedBlockLayerIndex.value > 0)
 const canMoveSelectedBlockForward = computed(() => (
-  selectedBlockLayerIndex.value >= 0 && selectedBlockLayerIndex.value < builderStore.layoutBlocks.length - 1
+  selectedBlockLayerIndex.value >= 0 && selectedBlockLayerIndex.value < builderLayout.layoutBlocks.length - 1
 ))
 const canvasScrollStyle = computed(() => ({
   width: `${canvasBaseWidth * canvasScale.value}px`,
@@ -360,11 +362,11 @@ function isComponentBlock(type: BuilderLayoutBlockType) {
 function handleBlockPointerDown(event: PointerEvent, blockId: string) {
   if (resizeState.value) return
 
-  const block = builderStore.layoutBlocks.find((item) => item.id === blockId)
+  const block = builderLayout.layoutBlocks.find((item) => item.id === blockId)
 
   if (!block) return
 
-  builderStore.selectLayoutBlock(blockId)
+  builderLayout.selectLayoutBlock(blockId)
   dragState.value = {
     blockId,
     startPointerX: event.clientX,
@@ -385,7 +387,7 @@ function handleBlockPointerDown(event: PointerEvent, blockId: string) {
 function handleBlockPointerMove(event: PointerEvent) {
   if (!dragState.value || !canvasRef.value) return
 
-  const block = builderStore.layoutBlocks.find((item) => item.id === dragState.value?.blockId)
+  const block = builderLayout.layoutBlocks.find((item) => item.id === dragState.value?.blockId)
 
   if (!block) return
 
@@ -394,7 +396,7 @@ function handleBlockPointerMove(event: PointerEvent) {
   const maxX = canvasBaseWidth - block.width
   const maxY = canvasBaseHeight - block.height
 
-  builderStore.updateLayoutBlock(block.id, {
+  builderLayout.updateLayoutBlock(block.id, {
     x: clamp(nextX, 0, maxX),
     y: clamp(nextY, 0, maxY)
   })
@@ -408,11 +410,11 @@ function handleBlockPointerMove(event: PointerEvent) {
  * @param direction 크기 조절 방향
  */
 function handleResizePointerDown(event: PointerEvent, blockId: string, direction: ResizeDirection) {
-  const block = builderStore.layoutBlocks.find((item) => item.id === blockId)
+  const block = builderLayout.layoutBlocks.find((item) => item.id === blockId)
 
   if (!block) return
 
-  builderStore.selectLayoutBlock(blockId)
+  builderLayout.selectLayoutBlock(blockId)
   resizeState.value = {
     blockId,
     direction,
@@ -436,7 +438,7 @@ function handleResizePointerDown(event: PointerEvent, blockId: string, direction
 function handleResizePointerMove(event: PointerEvent) {
   if (!resizeState.value) return
 
-  const block = builderStore.layoutBlocks.find((item) => item.id === resizeState.value?.blockId)
+  const block = builderLayout.layoutBlocks.find((item) => item.id === resizeState.value?.blockId)
 
   if (!block) return
 
@@ -464,7 +466,7 @@ function handleResizePointerMove(event: PointerEvent) {
     patch.y = resizeState.value.startY + resizeState.value.startHeight - nextHeight
   }
 
-  builderStore.updateLayoutBlock(block.id, patch)
+  builderLayout.updateLayoutBlock(block.id, patch)
 }
 
 /**
@@ -491,7 +493,7 @@ function stopBlockResize() {
 function updateSelectedBlock(patch: Partial<Omit<BuilderLayoutBlock, 'id'>>) {
   if (!selectedBlock.value) return
 
-  builderStore.updateLayoutBlock(selectedBlock.value.id, patch)
+  builderLayout.updateLayoutBlock(selectedBlock.value.id, patch)
 }
 
 /**
@@ -502,7 +504,7 @@ function updateSelectedBlock(patch: Partial<Omit<BuilderLayoutBlock, 'id'>>) {
 function updateSelectedSize(patch: Partial<Pick<BuilderLayoutBlock, 'width' | 'height'>>) {
   if (!selectedBlock.value) return
 
-  builderStore.updateLayoutBlock(selectedBlock.value.id, {
+  builderLayout.updateLayoutBlock(selectedBlock.value.id, {
     ...patch,
     width: patch.width ? Math.max(getMinWidth(selectedBlock.value.type), patch.width) : selectedBlock.value.width,
     height: patch.height ? Math.max(getMinHeight(selectedBlock.value.type), patch.height) : selectedBlock.value.height
@@ -601,14 +603,14 @@ function getMinHeight(type: BuilderLayoutBlockType) {
  * 캔버스 빈 영역을 클릭했을 때 현재 선택을 해제
  */
 function clearSelection() {
-  builderStore.clearLayoutBlockSelection()
+  builderLayout.clearLayoutBlockSelection()
 }
 
 /**
  * 디자인 작성 방식 선택 화면으로 돌아가기 위해 현재 선택된 작성 방식을 초기화
  */
 function handleSelectMethodAgain() {
-  builderStore.setView('design-method')
+  builderView.setView('design-method')
 }
 
 /**
@@ -1099,4 +1101,3 @@ onBeforeUnmount(() => {
   }
 }
 </style>
-

@@ -23,7 +23,7 @@
           v-for="element in currentDocument.elements"
           :key="element.id"
           class="element-list-item"
-          :class="{ active: builderStore.selectedElementId === element.id }"
+          :class="{ active: builderEditor.selectedElementId === element.id }"
           type="button"
           @click.stop="handleElementListClick(element)"
         >
@@ -136,10 +136,12 @@
 
 <script setup lang="ts">
 import type { ParsedHtmlEditableElement } from '~/stores/builder'
-import { useBuilderStore } from '~/stores/builder'
+import { useBuilderEditor } from '~/composables/editor/useBuilderEditor'
+import { useBuilderView } from '~/composables/view/useBuilderView'
 import { renderEditableHtmlDocument } from '~/services/html/parseHtmlDocument'
 
-const builderStore = useBuilderStore()
+const builderEditor = useBuilderEditor()
+const builderView = useBuilderView()
 const previewFrame = ref<HTMLIFrameElement | null>(null)
 const previewWrap = ref<HTMLElement | null>(null)
 const imageInput = ref<HTMLInputElement | null>(null)
@@ -157,11 +159,11 @@ const linkMenu = reactive({
   y: 0
 })
 
-const currentDocument = computed(() => builderStore.currentDocument)
+const currentDocument = computed(() => builderEditor.currentDocument)
 const previewHtml = computed(() => currentDocument.value ? renderEditableHtmlDocument(currentDocument.value) : '')
 const previewFrameWidth = computed(() => {
-  if (builderStore.activeViewport === 'tablet') return '768px'
-  if (builderStore.activeViewport === 'mobile') return '390px'
+  if (builderView.activeViewport === 'tablet') return '768px'
+  if (builderView.activeViewport === 'mobile') return '390px'
 
   return '100%'
 })
@@ -193,7 +195,7 @@ function handlePreviewLoad() {
       }
 
       if (elementId) {
-        builderStore.selectElement(elementId)
+        builderEditor.selectElement(elementId)
       }
 
       if (element.dataset.tcubeEditableType === 'text') {
@@ -240,7 +242,7 @@ function handlePreviewDocumentClick(event: MouseEvent) {
     event.preventDefault()
     event.stopPropagation()
     if (editableElement.dataset.tcubeEditableId) {
-      builderStore.selectElement(editableElement.dataset.tcubeEditableId)
+      builderEditor.selectElement(editableElement.dataset.tcubeEditableId)
     }
     openImageMenu(editableElement, event)
     return
@@ -287,10 +289,10 @@ function syncPreviewSelection() {
     delete element.dataset.tcubeSelected
   })
 
-  if (!builderStore.selectedElementId) return
+  if (!builderEditor.selectedElementId) return
 
   const selectedPreviewElement = frameDocument.querySelector<HTMLElement>(
-    `[data-tcube-editable-id="${builderStore.selectedElementId}"]`
+    `[data-tcube-editable-id="${builderEditor.selectedElementId}"]`
   )
 
   if (selectedPreviewElement) {
@@ -322,7 +324,7 @@ function startTextEdit(element: HTMLElement) {
     delete element.dataset.tcubeEditing
 
     if (elementId) {
-      builderStore.updateCurrentDocumentElement(elementId, {
+      builderEditor.updateCurrentDocumentElement(elementId, {
         content: element.textContent || ''
       })
     }
@@ -352,7 +354,7 @@ function startTextEdit(element: HTMLElement) {
  * @param element 목록에서 선택된 파싱 요소 정보
  */
 function handleElementListClick(element: ParsedHtmlEditableElement) {
-  builderStore.selectElement(element.id)
+  builderEditor.selectElement(element.id)
   closeLinkMenu()
 
   const previewElement = getPreviewElement(element.id)
@@ -446,7 +448,7 @@ function openAnchorToolbar(anchorElement: HTMLAnchorElement, clickedElement: HTM
   const elementId = anchorElement.dataset.tcubeEditableId
 
   if (elementId) {
-    builderStore.selectElement(elementId)
+    builderEditor.selectElement(elementId)
     openLinkMenu(anchorElement, event, targetType)
   }
 }
@@ -583,7 +585,7 @@ function applySelectedLinkHref() {
     linkElement.setAttribute('href', linkMenu.href)
   }
 
-  builderStore.updateCurrentDocumentElement(linkMenu.elementId, {
+  builderEditor.updateCurrentDocumentElement(linkMenu.elementId, {
     href: linkMenu.href
   })
   closeLinkMenu()
@@ -600,7 +602,7 @@ function applySelectedImageSrc() {
     previewElement.setAttribute('src', linkMenu.src)
   }
 
-  builderStore.updateCurrentDocumentElement(linkMenu.elementId, {
+  builderEditor.updateCurrentDocumentElement(linkMenu.elementId, {
     src: linkMenu.src
   })
   closeLinkMenu()
@@ -641,7 +643,7 @@ function handleImageInputChange(event: Event) {
       imageElement.src = src
     }
 
-    builderStore.updateCurrentDocumentElement(elementId, { src })
+    builderEditor.updateCurrentDocumentElement(elementId, { src })
     input.value = ''
   }
 
@@ -815,7 +817,7 @@ watch(previewHtml, () => {
 })
 
 watch(
-  () => builderStore.selectedElementId,
+  () => builderEditor.selectedElementId,
   () => {
     syncPreviewSelection()
   }

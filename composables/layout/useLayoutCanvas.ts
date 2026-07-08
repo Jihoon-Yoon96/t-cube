@@ -4,13 +4,33 @@
  */
 import type { BuilderLayoutBlock, BuilderLayoutBlockType } from '~/stores/builder/type/types'
 
+type LayoutCanvasState = ReturnType<typeof createLayoutCanvasState>
+type LayoutCanvasNuxtApp = ReturnType<typeof useNuxtApp> & {
+  _tcubeLayoutCanvas?: LayoutCanvasState
+}
+
 /**
  * 레이아웃 빌더 상태 구성
  * 블록 추가/수정/삭제, 선택, 계층 순서 변경 흐름 관리
  *
  * @returns 레이아웃 블록 상태와 조작 API
  */
-export function useBuilderLayoutCanvas() {
+export function useLayoutCanvas() {
+  const nuxtApp = useNuxtApp() as LayoutCanvasNuxtApp
+
+  if (!nuxtApp._tcubeLayoutCanvas) {
+    nuxtApp._tcubeLayoutCanvas = createLayoutCanvasState()
+  }
+
+  return nuxtApp._tcubeLayoutCanvas
+}
+
+/**
+ * 레이아웃 캔버스 상태 생성
+ *
+ * @returns 레이아웃 블록 상태와 조작 API
+ */
+function createLayoutCanvasState() {
   const layoutBlocks = ref<BuilderLayoutBlock[]>([])
   const selectedLayoutBlockId = ref<string | null>(null)
 

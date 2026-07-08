@@ -11,7 +11,7 @@
         :key="option.label"
         class="creation-card"
         type="button"
-        @click="builderStore.selectDesignMethod(option.method)"
+        @click="builderView.selectDesignMethod(option.method)"
       >
         <TcubeIcon :icon="option.icon" />
         <strong>{{ option.label }}</strong>
@@ -22,9 +22,9 @@
 </template>
 
 <script setup lang="ts">
-import { useBuilderStore } from '~/stores/builder'
+import { useBuilderView } from '~/composables/view/useBuilderView'
 
-const builderStore = useBuilderStore()
+const builderView = useBuilderView()
 
 const designOptions = [
   {

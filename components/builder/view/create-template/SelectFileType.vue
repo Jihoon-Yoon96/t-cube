@@ -11,7 +11,7 @@
         :key="option.label"
         class="creation-card upload-card"
         type="button"
-        @click="builderStore.selectUploadFileType(option.fileType)"
+        @click="builderUpload.selectUploadFileType(option.fileType)"
       >
         <TcubeIcon :icon="option.icon" />
         <strong>{{ option.label }}</strong>
@@ -21,9 +21,9 @@
 </template>
 
 <script setup lang="ts">
-import { useBuilderStore } from '~/stores/builder'
+import { useBuilderUpload } from '~/composables/upload/useBuilderUpload'
 
-const builderStore = useBuilderStore()
+const builderUpload = useBuilderUpload()
 
 const uploadOptions = [
   {

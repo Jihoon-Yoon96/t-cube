@@ -3,8 +3,8 @@
     <div class="tc-builder-shell">
       <BuilderSidebar
         :active-mode="activeMode"
-        @select-create="builderStore.setView('start')"
-        @select-edit="builderStore.startEditor()"
+        @select-create="builderView.setView('start')"
+        @select-edit="builderView.startEditor()"
       />
 
       <header class="tc-builder-mobile-header">
@@ -20,10 +20,10 @@
         <section class="tc-builder-main-inner">
           <BuilderTopToolbar
             v-if="showTopToolbar"
-            :active-viewport="builderStore.activeViewport"
+            :active-viewport="builderView.activeViewport"
             :viewport-modes="viewportModes"
-            @update:active-viewport="builderStore.setActiveViewport"
-            @preview="builderStore.setView('preview')"
+            @update:active-viewport="builderView.setActiveViewport"
+            @preview="builderView.setView('preview')"
             @save="handleSave"
           />
 
@@ -39,10 +39,12 @@
 <script setup lang="ts">
 import BuilderSidebar from '~/components/layouts/Sidebar/index.vue'
 import BuilderTopToolbar from '~/components/layouts/top-toolbar.vue'
+import { useBuilderEditor } from '~/composables/editor/useBuilderEditor'
+import { useBuilderView } from '~/composables/view/useBuilderView'
 import type { BuilderViewportMode } from '~/stores/builder'
-import { useBuilderStore } from '~/stores/builder'
 
-const builderStore = useBuilderStore()
+const builderView = useBuilderView()
+const builderEditor = useBuilderEditor()
 
 const viewportModes: Array<{
   key: BuilderViewportMode
@@ -55,13 +57,12 @@ const viewportModes: Array<{
   { key: 'mobile', label: 'Mobile viewport', shortLabel: 'Mobile', icon: 'ri-smartphone-line' }
 ]
 
-const activeMode = computed(() => builderStore.currentView === 'editor' ? 'edit' : 'create')
-const showTopToolbar = computed(() => builderStore.currentView === 'html-editor')
+const activeMode = computed(() => builderView.currentView === 'editor' ? 'edit' : 'create')
+const showTopToolbar = computed(() => builderView.currentView === 'html-editor')
 
 function handleSave() {
-  builderStore.markDirty(false)
+  builderEditor.markDirty(false)
 }
 </script>
-
 
 

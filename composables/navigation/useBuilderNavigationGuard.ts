@@ -1,29 +1,20 @@
-﻿/**
+/**
  * 빌더 화면 이동 guard composable
  * HTML 생성 중 화면 이탈 확인 및 이동 승인 흐름 관리
  */
-import type { useBuilderViewState } from '~/stores/builder/view'
-import type { useBuilderUploadState } from '~/stores/builder/upload'
-import type { BuilderDesignMethod, BuilderView, BuilderUploadFileType } from '~/stores/builder/type/types'
-
-type BuilderUploadState = ReturnType<typeof useBuilderUploadState>
-type BuilderViewState = ReturnType<typeof useBuilderViewState>
-
-type BuilderNavigationGuardParams = {
-  uploadState: BuilderUploadState
-  viewState: BuilderViewState
-  cancelDesignHtmlGeneration: () => void
-}
+import { useDesignToHtml } from '~/composables/html/useDesignToHtml'
+import { useBuilderStore } from '~/stores/builder'
+import type { BuilderDesignMethod, BuilderUploadFileType, BuilderView } from '~/stores/builder/type/types'
 
 /**
  * 빌더 이동 guard 구성
  * 생성 중인 AI 요청이 있으면 사용자 확인 후 상태 변경
  *
- * @param params 이동 guard에서 공유할 업로드/화면 상태와 취소 함수
  * @returns 화면/업로드 유형/디자인 방식 선택 API
  */
-export function useBuilderNavigationGuard(params: BuilderNavigationGuardParams) {
-  const { uploadState, viewState, cancelDesignHtmlGeneration } = params
+export function useBuilderNavigationGuard() {
+  const builderStore = useBuilderStore()
+  const { cancelDesignHtmlGeneration } = useDesignToHtml()
 
   /**
    * 빌더 화면 변경
@@ -33,10 +24,10 @@ export function useBuilderNavigationGuard(params: BuilderNavigationGuardParams) 
    * @returns 이동 처리 여부
    */
   function setView(nextView: BuilderView) {
-    if (nextView === viewState.currentView.value) return true
+    if (nextView === builderStore.currentView) return true
     if (!confirmDesignHtmlGenerationLeave()) return false
 
-    viewState.setView(nextView)
+    builderStore.setView(nextView)
     return true
   }
 
@@ -50,7 +41,7 @@ export function useBuilderNavigationGuard(params: BuilderNavigationGuardParams) 
   function selectUploadFileType(fileType: BuilderUploadFileType) {
     if (!confirmDesignHtmlGenerationLeave()) return false
 
-    uploadState.selectUploadFileType(fileType)
+    builderStore.selectUploadFileType(fileType)
     return true
   }
 
@@ -64,7 +55,7 @@ export function useBuilderNavigationGuard(params: BuilderNavigationGuardParams) 
   function selectDesignMethod(method: BuilderDesignMethod) {
     if (!confirmDesignHtmlGenerationLeave()) return false
 
-    viewState.setView(method === 'layout' ? 'layout-design' : 'ai-prompt-design')
+    builderStore.setView(method === 'layout' ? 'layout-design' : 'ai-prompt-design')
     return true
   }
 
@@ -75,7 +66,7 @@ export function useBuilderNavigationGuard(params: BuilderNavigationGuardParams) 
    * @returns 이탈 가능 여부
    */
   function confirmDesignHtmlGenerationLeave() {
-    if (uploadState.importStatus.value !== 'importing') return true
+    if (builderStore.importStatus !== 'importing') return true
     if (import.meta.server) return true
 
     const confirmed = window.confirm('AI가 HTML을 생성 중입니다. 정말 나가시겠습니까?')
@@ -93,4 +84,3 @@ export function useBuilderNavigationGuard(params: BuilderNavigationGuardParams) 
     selectDesignMethod
   }
 }
-

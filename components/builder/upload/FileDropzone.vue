@@ -12,8 +12,8 @@
       class="file-dropzone"
       :class="{
         dragging: isDraggingFile,
-        ready: Boolean(builderStore.uploadedFileSummary),
-        error: Boolean(builderStore.uploadError)
+        ready: Boolean(builderUpload.uploadedFileSummary),
+        error: Boolean(builderUpload.uploadError)
       }"
       role="button"
       tabindex="0"
@@ -26,10 +26,10 @@
       @drop.prevent="handleDrop"
     >
 	  <!-- 파일 업로드 validation 통과할 때 -->
-      <template v-if="builderStore.uploadedFileSummary">
+      <template v-if="builderUpload.uploadedFileSummary">
         <TcubeIcon icon="ri-file-check-line" />
         <span>
-          <strong>{{ builderStore.uploadedFileSummary.name }}</strong>
+          <strong>{{ builderUpload.uploadedFileSummary.name }}</strong>
         </span>
         <small>{{ uploadedFileMeta }} · 클릭하거나 드래그해서 파일을 교체할 수 있습니다.</small>
       </template>
@@ -38,7 +38,7 @@
       <template v-else>
         <TcubeIcon icon="ri-upload-2-line" />
         <span>
-          {{ builderStore.selectedUploadFileType }} 파일을 드래그하거나
+          {{ builderUpload.selectedUploadFileType }} 파일을 드래그하거나
           <strong>파일 선택</strong>
         </span>
         <small>{{ selectedUploadExtension }} 파일만 업로드 가능합니다</small>
@@ -46,11 +46,11 @@
     </div>
 
 	<!-- 파일 업로드 validation 통과 못할 때 -->
-    <p v-if="builderStore.uploadError" class="upload-message error">
-      {{ builderStore.uploadError }}
+    <p v-if="builderUpload.uploadError" class="upload-message error">
+      {{ builderUpload.uploadError }}
     </p>
 	<!-- 파일 업로드 validation 통과할 때 -->
-    <p v-else-if="builderStore.uploadedFileSummary" class="upload-message success">
+    <p v-else-if="builderUpload.uploadedFileSummary" class="upload-message success">
       파일 업로드가 완료되었습니다.
     </p>
 
@@ -58,7 +58,7 @@
       <button
         class="secondary-action"
         type="button"
-        :disabled="!builderStore.uploadedFileSummary"
+        :disabled="!builderUpload.uploadedFileSummary"
         @click="clearUploadedFile"
       >
         <TcubeIcon icon="ri-refresh-line" />
@@ -67,8 +67,8 @@
       <button
         class="primary-action"
         type="button"
-        :disabled="!builderStore.uploadedFileSummary || builderStore.importStatus === 'importing'"
-        @click="builderStore.startFileAnalysis()"
+        :disabled="!builderUpload.uploadedFileSummary || builderUpload.importStatus === 'importing'"
+        @click="builderFileAnalysis.startFileAnalysis()"
       >
         <TcubeIcon icon="ri-search-eye-line" />
         <span>{{ analysisButtonLabel }}</span>
@@ -78,9 +78,11 @@
 </template>
 
 <script setup lang="ts">
-import { useBuilderStore } from '~/stores/builder'
+import { useBuilderFileAnalysis } from '~/composables/file/useBuilderFileAnalysis'
+import { useBuilderUpload } from '~/composables/upload/useBuilderUpload'
 
-const builderStore = useBuilderStore()
+const builderUpload = useBuilderUpload()
+const builderFileAnalysis = useBuilderFileAnalysis()
 const fileInput = ref<HTMLInputElement | null>(null)
 
 /**
@@ -99,8 +101,8 @@ let dragDepth = 0
  * 업로드 허용 파일 유형 정리
  * */
 const selectedUploadAccept = computed(() => {
-  if (builderStore.selectedUploadFileType === 'HTML') return '.html,.htm,text/html'
-  if (builderStore.selectedUploadFileType === '이미지') return 'image/*'
+  if (builderUpload.selectedUploadFileType === 'HTML') return '.html,.htm,text/html'
+  if (builderUpload.selectedUploadFileType === '이미지') return 'image/*'
 
   return '.pdf,application/pdf'
 })
@@ -111,8 +113,8 @@ const selectedUploadAccept = computed(() => {
  * @returns 드롭존 하단에 표시할 파일 확장자 안내 문자열
  */
 const selectedUploadExtension = computed(() => {
-  if (builderStore.selectedUploadFileType === 'HTML') return '.html, .htm'
-  if (builderStore.selectedUploadFileType === '이미지') return '이미지'
+  if (builderUpload.selectedUploadFileType === 'HTML') return '.html, .htm'
+  if (builderUpload.selectedUploadFileType === '이미지') return '이미지'
 
   return '.pdf'
 })
@@ -123,17 +125,17 @@ const selectedUploadExtension = computed(() => {
  * @returns 업로드된 파일이 있으면 확장자와 용량 문자열, 없으면 빈 문자열 반환
  */
 const uploadedFileMeta = computed(() => {
-  if (!builderStore.uploadedFileSummary) return ''
+  if (!builderUpload.uploadedFileSummary) return ''
 
-  const extension = builderStore.uploadedFileSummary.extension
-    ? `.${builderStore.uploadedFileSummary.extension.toUpperCase()}`
+  const extension = builderUpload.uploadedFileSummary.extension
+    ? `.${builderUpload.uploadedFileSummary.extension.toUpperCase()}`
     : '파일'
 
-  return `${extension} · ${formatFileSize(builderStore.uploadedFileSummary.size)}`
+  return `${extension} · ${formatFileSize(builderUpload.uploadedFileSummary.size)}`
 })
 
 const analysisButtonLabel = computed(() => {
-  if (builderStore.importStatus === 'importing') return '분석 준비 중'
+  if (builderUpload.importStatus === 'importing') return '분석 준비 중'
 
   return '분석 시작'
 })
@@ -204,16 +206,16 @@ function handleDrop(event: DragEvent) {
  * @param file 사용자가 선택하거나 드롭한 로컬 파일
  */
 function handleSelectedFile(file: File) {
-  const isUploaded = builderStore.uploadDesignFile(file)
+  const isUploaded = builderUpload.uploadDesignFile(file)
 
-  if (isUploaded) builderStore.startFileAnalysis()
+  if (isUploaded) builderFileAnalysis.startFileAnalysis()
 }
 
 /**
  * store에 저장된 업로드 파일 상태 및 실제 input 값을 초기화
  */
 function clearUploadedFile() {
-  builderStore.clearUploadedFile()
+  builderUpload.clearUploadedFile()
   if (fileInput.value) {
     fileInput.value.value = ''
   }

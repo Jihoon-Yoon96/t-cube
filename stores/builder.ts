@@ -1,12 +1,7 @@
-﻿/**
- * 빌더 전체 Pinia store를 조립하는 진입점
- * 상태 모듈과 composable 흐름을 합쳐 외부 컴포넌트에는 단일 store API를 제공
+/**
+ * 빌더 전역 상태 Pinia store
+ * 화면, 업로드, HTML 편집 상태처럼 여러 화면에서 공유하는 상태만 관리
  */
-import { useBuilderFileAnalysis } from '~/composables/file/useBuilderFileAnalysis'
-import { useBuilderDesignToHtml } from '~/composables/html/useBuilderDesignToHtml'
-import { useBuilderLayoutDesign } from '~/composables/layout/useBuilderLayoutDesign'
-import { useBuilderNavigationGuard } from '~/composables/navigation/useBuilderNavigationGuard'
-import { useBuilderLayoutCanvas } from '~/composables/layout/useBuilderLayoutCanvas'
 import { useBuilderEditorState } from './builder/editor'
 import { useBuilderViewState } from './builder/view'
 import { useBuilderUploadState } from './builder/upload'
@@ -28,51 +23,18 @@ export type {
 
 /**
  * 빌더 Pinia store 구성
- * 도메인 상태와 composable 흐름을 단일 store API로 조립
+ * 화면, 업로드, 편집 상태 모듈 조립
  *
- * @returns 빌더 화면에서 사용하는 상태와 기능 API
+ * @returns 빌더 전역 상태와 상태 변경 API
  */
 export const useBuilderStore = defineStore('builder', () => {
   const viewState = useBuilderViewState()
   const uploadState = useBuilderUploadState(viewState.currentView)
-  const layoutCanvas = useBuilderLayoutCanvas()
   const editorState = useBuilderEditorState()
-  const designToHtmlFlow = useBuilderDesignToHtml({
-    uploadState,
-    editorState,
-    viewState
-  })
-  const fileAnalysisFlow = useBuilderFileAnalysis({
-    uploadState,
-    editorState,
-    viewState
-  })
-  const layoutDesignFlow = useBuilderLayoutDesign({
-    layoutCanvas,
-    uploadState,
-    editorState,
-    viewState
-  })
-  const navigationGuardFlow = useBuilderNavigationGuard({
-    uploadState,
-    viewState,
-    cancelDesignHtmlGeneration: designToHtmlFlow.cancelDesignHtmlGeneration
-  })
 
   return {
     ...viewState,
     ...uploadState,
-    ...layoutCanvas,
-    ...editorState,
-    setView: navigationGuardFlow.setView,
-    selectUploadFileType: navigationGuardFlow.selectUploadFileType,
-    selectDesignMethod: navigationGuardFlow.selectDesignMethod,
-    startFileAnalysis: fileAnalysisFlow.startFileAnalysis,
-    generateHtmlFromUploadedImage: designToHtmlFlow.generateHtmlFromUploadedImage,
-    generateHtmlFromUploadedPdf: designToHtmlFlow.generateHtmlFromUploadedPdf,
-    generateHtmlFromLayoutDesign: layoutDesignFlow.generateHtmlFromLayoutDesign,
-    cancelImageHtmlGeneration: designToHtmlFlow.cancelImageHtmlGeneration,
-    cancelPdfHtmlGeneration: designToHtmlFlow.cancelPdfHtmlGeneration
+    ...editorState
   }
 })
-

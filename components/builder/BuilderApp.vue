@@ -1,13 +1,13 @@
 ﻿<template>
-  <CreateTemplateStart v-if="builderStore.currentView === 'start'" />
-  <CreateTemplateSelectFileType v-else-if="builderStore.currentView === 'pdf-image-upload'" />
-  <CreateTemplateUploadFile v-else-if="builderStore.currentView === 'file-upload'" />
-  <CreateTemplateImageDesignPreview v-else-if="builderStore.currentView === 'image-preview'" />
-  <CreateTemplatePdfDesignPreview v-else-if="builderStore.currentView === 'pdf-preview'" />
-  <CreateTemplateHowToMakeDesign v-else-if="builderStore.currentView === 'design-method'" />
-  <CreateTemplateLayoutBuilder v-else-if="builderStore.currentView === 'layout-design'" />
-  <CreateTemplateHtmlDocumentEditor v-else-if="builderStore.currentView === 'html-editor'" />
-  <EditTemplateSelectTemplate v-else-if="builderStore.currentView === 'editor'" />
+  <CreateTemplateStart v-if="builderView.currentView === 'start'" />
+  <CreateTemplateSelectFileType v-else-if="builderView.currentView === 'pdf-image-upload'" />
+  <CreateTemplateUploadFile v-else-if="builderView.currentView === 'file-upload'" />
+  <CreateTemplateImageDesignPreview v-else-if="builderView.currentView === 'image-preview'" />
+  <CreateTemplatePdfDesignPreview v-else-if="builderView.currentView === 'pdf-preview'" />
+  <CreateTemplateHowToMakeDesign v-else-if="builderView.currentView === 'design-method'" />
+  <CreateTemplateLayoutBuilder v-else-if="builderView.currentView === 'layout-design'" />
+  <CreateTemplateHtmlDocumentEditor v-else-if="builderView.currentView === 'html-editor'" />
+  <EditTemplateSelectTemplate v-else-if="builderView.currentView === 'editor'" />
 
   <div v-else class="body-placeholder">
     <span class="section-title">WORKSPACE</span>
@@ -26,23 +26,23 @@ import CreateTemplateSelectFileType from './view/create-template/SelectFileType.
 import CreateTemplateStart from './view/create-template/Start.vue'
 import CreateTemplateUploadFile from './view/create-template/UploadFile.vue'
 import EditTemplateSelectTemplate from './view/edit-template/SelectTemplate.vue'
-import { useBuilderStore } from '~/stores/builder'
+import { useBuilderView } from '~/composables/view/useBuilderView'
 
-const builderStore = useBuilderStore()
+const builderView = useBuilderView()
 const activePage = {
   width: 960,
   height: 540
 }
 
 const stageTitle = computed(() => {
-  if (builderStore.currentView === 'editor') return '템플릿 수정'
-  if (builderStore.currentView === 'preview') return '미리보기'
+  if (builderView.currentView === 'editor') return '템플릿 수정'
+  if (builderView.currentView === 'preview') return '미리보기'
 
   return '템플릿 생성'
 })
 
 const stageSubtitle = computed(() => {
-  if (builderStore.currentView === 'editor') {
+  if (builderView.currentView === 'editor') {
     return `${activePage.width} x ${activePage.height}`
   }
 
@@ -1025,4 +1025,3 @@ const stageSubtitle = computed(() => {
   }
 }
 </style>
-

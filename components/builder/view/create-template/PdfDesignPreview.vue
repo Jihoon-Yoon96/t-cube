@@ -14,22 +14,22 @@
         </button>
         <button
           class="primary-action"
-          :class="{ 'is-loading': builderStore.importStatus === 'importing' }"
+          :class="{ 'is-loading': builderUpload.importStatus === 'importing' }"
           type="button"
           :disabled="isGenerateButtonDisabled"
           @click="handleGenerateHtml"
         >
           <TcubeIcon
-            :class="{ 'rotating-icon': builderStore.importStatus === 'importing' }"
-            :icon="builderStore.importStatus === 'importing' ? 'ri-loader-4-line' : 'ri-code-s-slash-line'"
+            :class="{ 'rotating-icon': builderUpload.importStatus === 'importing' }"
+            :icon="builderUpload.importStatus === 'importing' ? 'ri-loader-4-line' : 'ri-code-s-slash-line'"
           />
           <span>{{ generateButtonLabel }}</span>
         </button>
       </div>
     </div>
 
-    <p v-if="builderStore.uploadError" class="upload-message error">
-      {{ builderStore.uploadError }}
+    <p v-if="builderUpload.uploadError" class="upload-message error">
+      {{ builderUpload.uploadError }}
     </p>
     <p v-else-if="pdfPageMessage" class="upload-message" :class="{ error: !canGenerateHtml }">
       {{ pdfPageMessage }}
@@ -48,7 +48,7 @@
         <dl>
           <div>
             <dt>파일명</dt>
-            <dd>{{ builderStore.uploadedFileSummary?.name }}</dd>
+            <dd>{{ builderUpload.uploadedFileSummary?.name }}</dd>
           </div>
           <div>
             <dt>파일 형식</dt>
@@ -75,9 +75,13 @@
 </template>
 
 <script setup lang="ts">
-import { useBuilderStore } from '~/stores/builder'
+import { useBuilderHtmlGeneration } from '~/composables/html/useBuilderHtmlGeneration'
+import { useBuilderUpload } from '~/composables/upload/useBuilderUpload'
+import { useBuilderView } from '~/composables/view/useBuilderView'
 
-const builderStore = useBuilderStore()
+const builderUpload = useBuilderUpload()
+const builderView = useBuilderView()
+const builderHtmlGeneration = useBuilderHtmlGeneration()
 const pdfUrl = ref('')
 const pdfPageCount = ref(0)
 const isCheckingPdfPageCount = ref(false)
@@ -85,7 +89,7 @@ const generationElapsedSeconds = ref(0)
 let generationTimerId: ReturnType<typeof setInterval> | null = null
 
 const generateButtonLabel = computed(() => {
-  if (builderStore.importStatus === 'importing') {
+  if (builderUpload.importStatus === 'importing') {
     return `HTML 생성 중 ${generationElapsedSeconds.value}s`
   }
 
@@ -96,7 +100,7 @@ const generateButtonLabel = computed(() => {
 
 const canGenerateHtml = computed(() => pdfPageCount.value === 1)
 const isGenerateButtonDisabled = computed(() => (
-  builderStore.importStatus === 'importing'
+  builderUpload.importStatus === 'importing'
   || isCheckingPdfPageCount.value
   || !canGenerateHtml.value
 ))
@@ -117,13 +121,13 @@ const pdfPageMessage = computed(() => {
 })
 
 const fileTypeLabel = computed(() => {
-  const extension = builderStore.uploadedFileSummary?.extension
+  const extension = builderUpload.uploadedFileSummary?.extension
 
   return extension ? `.${extension.toUpperCase()}` : 'PDF'
 })
 
 const fileSizeLabel = computed(() => {
-  const size = builderStore.uploadedFileSummary?.size
+  const size = builderUpload.uploadedFileSummary?.size
 
   if (!size) return '-'
 
@@ -137,10 +141,10 @@ function createPdfPreviewUrl() {
   revokePdfPreviewUrl()
   pdfPageCount.value = 0
 
-  if (!builderStore.uploadedFile) return
+  if (!builderUpload.uploadedFile) return
 
-  pdfUrl.value = URL.createObjectURL(builderStore.uploadedFile)
-  readPdfPageCount(builderStore.uploadedFile)
+  pdfUrl.value = URL.createObjectURL(builderUpload.uploadedFile)
+  readPdfPageCount(builderUpload.uploadedFile)
 }
 
 /**
@@ -159,7 +163,7 @@ function revokePdfPreviewUrl() {
 function handleGenerateHtml() {
   if (!canGenerateHtml.value) return
 
-  builderStore.generateHtmlFromUploadedPdf()
+  builderHtmlGeneration.generateHtmlFromUploadedPdf()
 }
 
 /**
@@ -192,7 +196,7 @@ async function readPdfPageCount(file: File) {
  * HTML 생성 요청이 진행 중이면 확인 후 파일 업로드 단계로 이동
  */
 function handleSelectFileAgain() {
-  builderStore.setView('file-upload')
+  builderView.setView('file-upload')
 }
 
 /**
@@ -201,7 +205,7 @@ function handleSelectFileAgain() {
  * @param event 브라우저 이탈 직전에 발생하는 beforeunload 이벤트
  */
 function handleBeforeUnload(event: BeforeUnloadEvent) {
-  if (builderStore.importStatus !== 'importing') return
+  if (builderUpload.importStatus !== 'importing') return
 
   event.preventDefault()
   event.returnValue = ''
@@ -244,14 +248,14 @@ function formatFileSize(size: number) {
 }
 
 watch(
-  () => builderStore.uploadedFile,
+  () => builderUpload.uploadedFile,
   () => {
     createPdfPreviewUrl()
   }
 )
 
 watch(
-  () => builderStore.importStatus,
+  () => builderUpload.importStatus,
   (status) => {
     if (status === 'importing') {
       startGenerationTimer()
@@ -270,8 +274,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
 
-  if (builderStore.importStatus === 'importing') {
-    builderStore.cancelPdfHtmlGeneration()
+  if (builderUpload.importStatus === 'importing') {
+    builderHtmlGeneration.cancelPdfHtmlGeneration()
   }
 
   stopGenerationTimer()
@@ -279,12 +283,12 @@ onBeforeUnmount(() => {
 })
 
 onBeforeRouteLeave(() => {
-  if (builderStore.importStatus !== 'importing') return true
+  if (builderUpload.importStatus !== 'importing') return true
 
   const confirmed = window.confirm('AI가 HTML을 생성 중입니다. 정말 나가시겠습니까?')
 
   if (confirmed) {
-    builderStore.cancelPdfHtmlGeneration()
+    builderHtmlGeneration.cancelPdfHtmlGeneration()
   }
 
   return confirmed
@@ -310,4 +314,3 @@ onBeforeRouteLeave(() => {
   }
 }
 </style>
-

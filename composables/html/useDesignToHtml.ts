@@ -1,33 +1,31 @@
-﻿/**
+/**
  * 이미지/PDF 디자인 시안의 HTML 변환 composable
  * API 호출, 요청 취소, 변환 결과의 편집기 반영 흐름 관리
  */
 import { parseHtmlDocument } from '~/services/html/parseHtmlDocument'
-import type { useBuilderEditorState } from '~/stores/builder/editor'
-import type { useBuilderViewState } from '~/stores/builder/view'
-import type { useBuilderUploadState } from '~/stores/builder/upload'
+import { useBuilderStore } from '~/stores/builder'
 import type { DesignToHtmlResponse } from '~/types/builder/design-to-html'
+import type { ShallowRef } from 'vue'
 
-type BuilderUploadState = ReturnType<typeof useBuilderUploadState>
-type BuilderEditorState = ReturnType<typeof useBuilderEditorState>
-type BuilderViewState = ReturnType<typeof useBuilderViewState>
-
-type BuilderDesignToHtmlParams = {
-  uploadState: BuilderUploadState
-  editorState: BuilderEditorState
-  viewState: BuilderViewState
+type DesignToHtmlNuxtApp = ReturnType<typeof useNuxtApp> & {
+  _tcubeDesignHtmlGenerationAbortController?: ShallowRef<AbortController | null>
 }
 
 /**
  * 이미지/PDF 디자인 시안의 HTML 변환 흐름 구성
  * API 호출, 취소, 응답 파싱, HTML 편집 화면 전환 흐름 관리
  *
- * @param params 변환 흐름에서 공유할 업로드/편집기/화면 상태
  * @returns 이미지/PDF HTML 변환 및 취소 API
  */
-export function useBuilderDesignToHtml(params: BuilderDesignToHtmlParams) {
-  const { uploadState, editorState, viewState } = params
-  const designHtmlGenerationAbortController = shallowRef<AbortController | null>(null)
+export function useDesignToHtml() {
+  const builderStore = useBuilderStore()
+  const nuxtApp = useNuxtApp() as DesignToHtmlNuxtApp
+
+  if (!nuxtApp._tcubeDesignHtmlGenerationAbortController) {
+    nuxtApp._tcubeDesignHtmlGenerationAbortController = shallowRef<AbortController | null>(null)
+  }
+
+  const designHtmlGenerationAbortController = nuxtApp._tcubeDesignHtmlGenerationAbortController
 
   /**
    * 업로드된 이미지 파일을 기반으로 HTML 생성 요청
@@ -36,20 +34,20 @@ export function useBuilderDesignToHtml(params: BuilderDesignToHtmlParams) {
    * @returns 이미지 HTML 생성 처리 완료 Promise
    */
   async function generateHtmlFromUploadedImage() {
-    if (!uploadState.uploadedFile.value) {
-      uploadState.failFileAnalysis('HTML을 생성하려면 먼저 이미지 파일을 업로드해주세요.')
+    if (!builderStore.uploadedFile) {
+      builderStore.failFileAnalysis('HTML을 생성하려면 먼저 이미지 파일을 업로드해주세요.')
       return
     }
 
     cancelDesignHtmlGeneration()
-    uploadState.startFileAnalysis()
+    builderStore.startFileAnalysis()
 
     const abortController = new AbortController()
     designHtmlGenerationAbortController.value = abortController
 
     try {
       const formData = new FormData()
-      formData.append('image', uploadState.uploadedFile.value)
+      formData.append('image', builderStore.uploadedFile)
 
       const response = await $fetch<DesignToHtmlResponse>('/api/builder/image-to-html', {
         method: 'POST',
@@ -60,7 +58,7 @@ export function useBuilderDesignToHtml(params: BuilderDesignToHtmlParams) {
       completeDesignHtmlGeneration(response)
     } catch (error) {
       if (isAbortError(error)) {
-        uploadState.cancelFileAnalysis()
+        builderStore.cancelFileAnalysis()
         return
       }
 
@@ -68,7 +66,7 @@ export function useBuilderDesignToHtml(params: BuilderDesignToHtmlParams) {
         ? error.message
         : '이미지 기반 HTML을 생성하는 중 문제가 발생했습니다.'
 
-      uploadState.failFileAnalysis(message)
+      builderStore.failFileAnalysis(message)
     } finally {
       if (designHtmlGenerationAbortController.value === abortController) {
         designHtmlGenerationAbortController.value = null
@@ -83,20 +81,20 @@ export function useBuilderDesignToHtml(params: BuilderDesignToHtmlParams) {
    * @returns PDF HTML 생성 처리 완료 Promise
    */
   async function generateHtmlFromUploadedPdf() {
-    if (!uploadState.uploadedFile.value) {
-      uploadState.failFileAnalysis('HTML을 생성하려면 먼저 PDF 파일을 업로드해주세요.')
+    if (!builderStore.uploadedFile) {
+      builderStore.failFileAnalysis('HTML을 생성하려면 먼저 PDF 파일을 업로드해주세요.')
       return
     }
 
     cancelDesignHtmlGeneration()
-    uploadState.startFileAnalysis()
+    builderStore.startFileAnalysis()
 
     const abortController = new AbortController()
     designHtmlGenerationAbortController.value = abortController
 
     try {
       const formData = new FormData()
-      formData.append('pdf', uploadState.uploadedFile.value)
+      formData.append('pdf', builderStore.uploadedFile)
 
       const response = await $fetch<DesignToHtmlResponse>('/api/builder/pdf-to-html', {
         method: 'POST',
@@ -107,7 +105,7 @@ export function useBuilderDesignToHtml(params: BuilderDesignToHtmlParams) {
       completeDesignHtmlGeneration(response)
     } catch (error) {
       if (isAbortError(error)) {
-        uploadState.cancelFileAnalysis()
+        builderStore.cancelFileAnalysis()
         return
       }
 
@@ -115,7 +113,7 @@ export function useBuilderDesignToHtml(params: BuilderDesignToHtmlParams) {
         ? error.message
         : 'PDF 기반 HTML을 생성하는 중 문제가 발생했습니다.'
 
-      uploadState.failFileAnalysis(message)
+      builderStore.failFileAnalysis(message)
     } finally {
       if (designHtmlGenerationAbortController.value === abortController) {
         designHtmlGenerationAbortController.value = null
@@ -131,13 +129,13 @@ export function useBuilderDesignToHtml(params: BuilderDesignToHtmlParams) {
    */
   function completeDesignHtmlGeneration(response: DesignToHtmlResponse) {
     const parsedDocument = parseHtmlDocument(response.html, {
-      sourceName: response.title || `${uploadState.uploadedFile.value?.name || 'generated'}.html`
+      sourceName: response.title || `${builderStore.uploadedFile?.name || 'generated'}.html`
     })
 
-    editorState.setCurrentDocument(parsedDocument)
-    editorState.markDirty(false)
-    uploadState.completeFileAnalysis()
-    viewState.setView('html-editor')
+    builderStore.setCurrentDocument(parsedDocument)
+    builderStore.markDirty(false)
+    builderStore.completeFileAnalysis()
+    builderStore.setView('html-editor')
   }
 
   /**
@@ -149,7 +147,7 @@ export function useBuilderDesignToHtml(params: BuilderDesignToHtmlParams) {
 
     designHtmlGenerationAbortController.value.abort()
     designHtmlGenerationAbortController.value = null
-    uploadState.cancelFileAnalysis()
+    builderStore.cancelFileAnalysis()
   }
 
   /**
@@ -189,4 +187,3 @@ export function useBuilderDesignToHtml(params: BuilderDesignToHtmlParams) {
     cancelPdfHtmlGeneration
   }
 }
-
