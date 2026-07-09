@@ -23,7 +23,7 @@ export function useBuilderNavigationGuard() {
    * @param nextView 이동할 다음 화면
    * @returns 이동 처리 여부
    */
-  function setView(nextView: BuilderView) {
+  function moveToView(nextView: BuilderView) {
     if (nextView === builderStore.currentView) return true
     if (!confirmDesignHtmlGenerationLeave()) return false
 
@@ -79,7 +79,7 @@ export function useBuilderNavigationGuard() {
   }
 
   return {
-    setView,
+    moveToView,
     selectUploadFileType,
     selectDesignMethod
   }

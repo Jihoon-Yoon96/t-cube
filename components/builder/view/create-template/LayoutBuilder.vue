@@ -614,7 +614,7 @@ function clearSelection() {
  * 디자인 작성 방식 선택 화면으로 돌아가기 위해 현재 선택된 작성 방식을 초기화
  */
 function handleSelectMethodAgain() {
-  builderView.setView('design-method')
+  builderView.moveToView('design-method')
 }
 
 /**

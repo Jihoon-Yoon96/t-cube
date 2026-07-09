@@ -19,9 +19,8 @@ export function useBuilderView() {
   return reactive({
     currentView: builderStoreRefs.currentView,
     activeViewport: builderStoreRefs.activeViewport,
-    setView: navigationGuard.setView,
+    moveToView: navigationGuard.moveToView,
     setActiveViewport: builderStore.setActiveViewport,
-    startEditor: builderStore.startEditor,
     selectDesignMethod: navigationGuard.selectDesignMethod
   })
 }

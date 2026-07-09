@@ -78,14 +78,14 @@ const createTreeItems = computed(() => {
         active: false,
         depth: 1,
         last: false,
-        onClick: () => builderView.setView('pdf-image-upload')
+        onClick: () => builderView.moveToView('pdf-image-upload')
       },
       {
         label: '디자인 시안 작성',
         active: false,
         depth: 1,
         last: true,
-        onClick: () => builderView.setView('design-method')
+        onClick: () => builderView.moveToView('design-method')
       }
     ]
   }
@@ -97,7 +97,7 @@ const createTreeItems = computed(() => {
         active: true,
         depth: 1,
         last: false,
-        onClick: () => builderView.setView('pdf-image-upload')
+        onClick: () => builderView.moveToView('pdf-image-upload')
       },
       ...uploadTreeItems.value,
       {
@@ -105,7 +105,7 @@ const createTreeItems = computed(() => {
         active: false,
         depth: 1,
         last: true,
-        onClick: () => builderView.setView('design-method')
+        onClick: () => builderView.moveToView('design-method')
       }
     ]
   }
@@ -122,7 +122,7 @@ const createTreeItems = computed(() => {
         active: false,
         depth: 1,
         last: false,
-        onClick: () => builderView.setView('pdf-image-upload')
+        onClick: () => builderView.moveToView('pdf-image-upload')
       },
       ...uploadTreeItems.value,
       {
@@ -130,7 +130,7 @@ const createTreeItems = computed(() => {
         active: false,
         depth: 1,
         last: true,
-        onClick: () => builderView.setView('design-method')
+        onClick: () => builderView.moveToView('design-method')
       }
     ]
   }
@@ -146,14 +146,14 @@ const createTreeItems = computed(() => {
         active: false,
         depth: 1,
         last: false,
-        onClick: () => builderView.setView('pdf-image-upload')
+        onClick: () => builderView.moveToView('pdf-image-upload')
       },
       {
         label: '디자인 시안 작성',
         active: builderView.currentView === 'design-method',
         depth: 1,
         last: false,
-        onClick: () => builderView.setView('design-method')
+        onClick: () => builderView.moveToView('design-method')
       },
       ...designTreeItems.value
     ]
@@ -166,14 +166,14 @@ const createTreeItems = computed(() => {
         active: false,
         depth: 1,
         last: false,
-        onClick: () => builderView.setView('pdf-image-upload')
+        onClick: () => builderView.moveToView('pdf-image-upload')
       },
       {
         label: '디자인 시안 작성',
         active: false,
         depth: 1,
         last: true,
-        onClick: () => builderView.setView('design-method')
+        onClick: () => builderView.moveToView('design-method')
       }
     ]
   }

@@ -196,7 +196,7 @@ async function readPdfPageCount(file: File) {
  * HTML 생성 요청이 진행 중이면 확인 후 파일 업로드 단계로 이동
  */
 function handleSelectFileAgain() {
-  builderView.setView('file-upload')
+  builderView.moveToView('file-upload')
 }
 
 /**
@@ -275,7 +275,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
 
   if (builderUpload.importStatus === 'importing') {
-    builderHtmlGeneration.cancelPdfHtmlGeneration()
+    builderHtmlGeneration.cancelDesignHtmlGeneration()
   }
 
   stopGenerationTimer()
@@ -288,7 +288,7 @@ onBeforeRouteLeave(() => {
   const confirmed = window.confirm('AI가 HTML을 생성 중입니다. 정말 나가시겠습니까?')
 
   if (confirmed) {
-    builderHtmlGeneration.cancelPdfHtmlGeneration()
+    builderHtmlGeneration.cancelDesignHtmlGeneration()
   }
 
   return confirmed

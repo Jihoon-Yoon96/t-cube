@@ -150,20 +150,6 @@ export function useBuilderHtmlGeneration() {
   }
 
   /**
-   * 이미지 기반 HTML 생성 요청 취소
-   */
-  function cancelImageHtmlGeneration() {
-    cancelDesignHtmlGeneration()
-  }
-
-  /**
-   * PDF 기반 HTML 생성 요청 취소
-   */
-  function cancelPdfHtmlGeneration() {
-    cancelDesignHtmlGeneration()
-  }
-
-  /**
    * 요청 취소로 발생한 에러인지 확인
    *
    * @param error 확인할 에러 객체
@@ -181,8 +167,6 @@ export function useBuilderHtmlGeneration() {
   return {
     generateHtmlFromUploadedImage,
     generateHtmlFromUploadedPdf,
-    cancelDesignHtmlGeneration,
-    cancelImageHtmlGeneration,
-    cancelPdfHtmlGeneration
+    cancelDesignHtmlGeneration
   }
 }

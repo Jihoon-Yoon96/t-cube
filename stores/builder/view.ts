@@ -33,18 +33,10 @@ export function useBuilderViewState() {
     activeViewport.value = nextViewport
   }
 
-  /**
-   * 기본 편집 화면 진입
-   */
-  function startEditor() {
-    currentView.value = 'editor'
-  }
-
   return {
     currentView,
     activeViewport,
     setView,
-    setActiveViewport,
-    startEditor
+    setActiveViewport
   }
 }

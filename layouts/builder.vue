@@ -3,8 +3,8 @@
     <div class="tc-builder-shell">
       <BuilderSidebar
         :active-mode="activeMode"
-        @select-create="builderView.setView('start')"
-        @select-edit="builderView.startEditor()"
+        @select-create="builderView.moveToView('start')"
+        @select-edit="builderView.moveToView('editor')"
       />
 
       <header class="tc-builder-mobile-header">
@@ -23,7 +23,7 @@
             :active-viewport="builderView.activeViewport"
             :viewport-modes="viewportModes"
             @update:active-viewport="builderView.setActiveViewport"
-            @preview="builderView.setView('preview')"
+            @preview="builderView.moveToView('preview')"
             @save="handleSave"
           />
 
@@ -64,5 +64,3 @@ function handleSave() {
   builderEditor.markDirty(false)
 }
 </script>
-
-
