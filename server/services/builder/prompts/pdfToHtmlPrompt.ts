@@ -14,6 +14,8 @@ export function createPdfToHtmlPrompt(title: string) {
     '외부 이미지, 외부 CSS, 외부 JavaScript 의존성은 사용하지 마세요.',
     'PDF의 페이지 구조, 섹션 흐름, 표, 버튼, 이미지 배치, 색상, 간격, 타이포그래피를 최대한 반영해주세요.',
     '여러 페이지가 있다면 각 페이지를 자연스럽게 이어지는 section으로 구성해주세요.',
+    '결과물은 header, main, section, article, nav, footer 등 의미에 맞는 시멘틱 HTML 구조로 작성해주세요.',
+    '아이콘 또는 이미지로 유추되는 영역은 img 태그를 사용하고, src는 빈 문자열로 두며, alt에는 짧은 설명글을 넣어주세요.',
     '반응형 기본 처리를 포함해주세요.',
     '텍스트를 정확히 읽기 어려운 영역은 의미가 유지되는 한국어 대체 텍스트로 작성하고 warnings에 기록해주세요.',
     `문서 제목 후보: ${title}`

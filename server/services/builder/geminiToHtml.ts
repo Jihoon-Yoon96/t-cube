@@ -25,7 +25,8 @@ type GeminiAttemptResult = {
   warnings: string[]
 }
 
-const GEMINI_FALLBACK_MODEL = 'gemini-2.5-flash-lite'
+const GEMINI_DEFAULT_MODEL = 'gemini-3.5-flash'
+const GEMINI_FALLBACK_MODEL = 'gemini-2.5-flash'
 const GEMINI_RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504])
 
 /**
@@ -47,7 +48,7 @@ export async function generateHtmlFromDesignFile(
       title,
       prompt: params.prompt,
       apiKey: config.geminiApiKey,
-      model: config.geminiImageToHtmlModel || 'gemini-2.5-flash'
+      model: config.geminiImageToHtmlModel || GEMINI_DEFAULT_MODEL
     })
   }
 

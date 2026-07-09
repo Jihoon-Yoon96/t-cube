@@ -53,7 +53,7 @@ pnpm dev:local
 
 ```env
 GEMINI_API_KEY=본인의_Gemini_API_키
-GEMINI_IMAGE_TO_HTML_MODEL=gemini-2.5-flash
+GEMINI_IMAGE_TO_HTML_MODEL=gemini-3.5-flash
 ```
 
 `.env` 파일은 Git에 포함하지 않습니다. 배포할 때도 동일한 key 이름으로 환경변수 등록을 해야합니다.

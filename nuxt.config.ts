@@ -1,4 +1,5 @@
 const CONFIG = require('./config/config')
+const DEFAULT_GEMINI_IMAGE_TO_HTML_MODEL = 'gemini-3.5-flash'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -6,7 +7,7 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   runtimeConfig: {
     geminiApiKey: process.env.GEMINI_API_KEY || '',
-    geminiImageToHtmlModel: process.env.GEMINI_IMAGE_TO_HTML_MODEL || CONFIG.GEMINI?.MODEL || 'gemini-2.5-flash'
+    geminiImageToHtmlModel: process.env.GEMINI_IMAGE_TO_HTML_MODEL || CONFIG.GEMINI?.MODEL || DEFAULT_GEMINI_IMAGE_TO_HTML_MODEL
   },
   modules: ['@vueuse/nuxt', '@pinia/nuxt'],
   components: [
