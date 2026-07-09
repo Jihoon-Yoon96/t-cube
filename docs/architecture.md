@@ -85,7 +85,7 @@ store에 두기 좋은 상태:
 
 - `composables/view/useBuilderView.ts`: 현재 view, viewport, guard가 적용된 화면 이동 API
 - `composables/upload/useBuilderUpload.ts`: 업로드 파일, 업로드 상태, 업로드 조작 API
-- `composables/file/useBuilderFileAnalysis.ts`: 업로드 파일 분석 시작 API
+- `composables/file/useBuilderFileAnalysis.ts`: 업로드 파일 분석 실행 API
 - `composables/file/useFileAnalysis.ts`: 업로드 파일 유형별 분석 처리와 화면 전환
 - `composables/html/useBuilderHtmlGeneration.ts`: 이미지/PDF 기반 HTML 생성 API 호출과 취소
 - `composables/layout/useBuilderLayoutCanvas.ts`: 레이아웃 작성 화면의 블록 데이터와 선택 상태 관리

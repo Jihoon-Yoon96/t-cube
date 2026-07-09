@@ -34,7 +34,7 @@ composables
 
 - `view/useBuilderView.ts`: 현재 view, viewport, guard가 적용된 화면 이동 API
 - `upload/useBuilderUpload.ts`: 업로드 파일, 업로드 상태, 업로드 조작 API
-- `file/useBuilderFileAnalysis.ts`: 업로드 파일 분석 시작 API
+- `file/useBuilderFileAnalysis.ts`: 업로드 파일 분석 실행 API
 - `html/useBuilderHtmlGeneration.ts`: 이미지/PDF 기반 HTML 생성과 생성 요청 취소 API
 - `layout/useBuilderLayoutCanvas.ts`: 레이아웃 블록 상태와 캔버스 조작 API
 - `layout/useBuilderLayoutDesignToHtml.ts`: 레이아웃 블록 기반 HTML 생성 API

@@ -1,6 +1,6 @@
 /**
  * 빌더 파일 분석 공개 composable
- * 컴포넌트에서 사용하는 파일 분석 시작 API 제공
+ * 컴포넌트에서 사용하는 업로드 파일 분석 API 제공
  */
 import { useFileAnalysis } from '~/composables/file/useFileAnalysis'
 
@@ -13,6 +13,6 @@ export function useBuilderFileAnalysis() {
   const fileAnalysis = useFileAnalysis()
 
   return {
-    startFileAnalysis: fileAnalysis.startFileAnalysis
+    analyzeUploadedFile: fileAnalysis.analyzeUploadedFile
   }
 }

@@ -68,7 +68,7 @@
         class="primary-action"
         type="button"
         :disabled="!builderUpload.uploadedFileSummary || builderUpload.importStatus === 'importing'"
-        @click="builderFileAnalysis.startFileAnalysis()"
+        @click="builderFileAnalysis.analyzeUploadedFile()"
       >
         <TcubeIcon icon="ri-search-eye-line" />
         <span>{{ analysisButtonLabel }}</span>
@@ -208,7 +208,7 @@ function handleDrop(event: DragEvent) {
 function handleSelectedFile(file: File) {
   const isUploaded = builderUpload.uploadDesignFile(file)
 
-  if (isUploaded) builderFileAnalysis.startFileAnalysis()
+  if (isUploaded) builderFileAnalysis.analyzeUploadedFile()
 }
 
 /**

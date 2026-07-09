@@ -15,12 +15,12 @@ export function useFileAnalysis() {
   const builderStore = useBuilderStore()
 
   /**
-   * 업로드 파일 분석 시작
+   * 업로드 파일 분석 실행
    * 선택된 파일 유형에 따라 HTML 편집기 또는 preview 화면으로 전환
    *
    * @returns 파일 분석 처리 완료 Promise
    */
-  async function startFileAnalysis() {
+  async function analyzeUploadedFile() {
     if (!builderStore.startFileAnalysis()) return
 
     if (!builderStore.uploadedFile) return
@@ -59,6 +59,6 @@ export function useFileAnalysis() {
   }
 
   return {
-    startFileAnalysis
+    analyzeUploadedFile
   }
 }
