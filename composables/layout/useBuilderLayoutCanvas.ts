@@ -15,10 +15,11 @@ type LayoutCanvasNuxtApp = ReturnType<typeof useNuxtApp> & {
  *
  * @returns 레이아웃 블록 상태와 조작 API
  */
-export function useLayoutCanvas() {
+export function useBuilderLayoutCanvas() {
   const nuxtApp = useNuxtApp() as LayoutCanvasNuxtApp
+  const currentLayoutCanvas = nuxtApp._tcubeLayoutCanvas
 
-  if (!nuxtApp._tcubeLayoutCanvas) {
+  if (!currentLayoutCanvas || isRef((currentLayoutCanvas as { layoutBlocks?: unknown }).layoutBlocks)) {
     nuxtApp._tcubeLayoutCanvas = createLayoutCanvasState()
   }
 
@@ -322,7 +323,7 @@ function createLayoutCanvasState() {
     return Math.max(0, ...layoutBlocks.value.map((block) => block.zIndex || 0)) + 1
   }
 
-  return {
+  return reactive({
     layoutBlocks,
     selectedLayoutBlockId,
     selectedLayoutBlock,
@@ -336,5 +337,5 @@ function createLayoutCanvasState() {
     removeLayoutBlock,
     clearLayoutBlocks,
     clearLayoutBlockSelection
-  }
+  })
 }

@@ -2,7 +2,7 @@
  * 레이아웃 작성 기반 HTML 생성 composable
  * 레이아웃 블록 변환 결과의 편집기 반영 및 화면 전환 흐름 관리
  */
-import { useLayoutCanvas } from '~/composables/layout/useLayoutCanvas'
+import { useBuilderLayoutCanvas } from '~/composables/layout/useBuilderLayoutCanvas'
 import { createLayoutDesignHtml } from '~/services/builder/layoutDesignToHtml'
 import { parseHtmlDocument } from '~/services/html/parseHtmlDocument'
 import { useBuilderStore } from '~/stores/builder'
@@ -13,21 +13,21 @@ import { useBuilderStore } from '~/stores/builder'
  *
  * @returns 레이아웃 기반 HTML 생성 API
  */
-export function useLayoutDesignToHtml() {
+export function useBuilderLayoutDesignToHtml() {
   const builderStore = useBuilderStore()
-  const layoutCanvas = useLayoutCanvas()
+  const layoutCanvas = useBuilderLayoutCanvas()
 
   /**
    * 레이아웃 블록 기반 HTML 생성
    * 생성된 HTML 파싱 및 HTML 편집 화면 전환
    */
   function generateHtmlFromLayoutDesign() {
-    if (!layoutCanvas.layoutBlocks.value.length) {
+    if (!layoutCanvas.layoutBlocks.length) {
       builderStore.failFileAnalysis('HTML을 생성하려면 먼저 캔버스에 레이아웃 블록을 추가해주세요.')
       return
     }
 
-    const html = createLayoutDesignHtml(layoutCanvas.layoutBlocks.value)
+    const html = createLayoutDesignHtml(layoutCanvas.layoutBlocks)
     const parsedDocument = parseHtmlDocument(html, {
       sourceName: 'layout-design.html'
     })

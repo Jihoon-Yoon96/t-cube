@@ -2,7 +2,7 @@
  * 빌더 화면 이동 guard composable
  * HTML 생성 중 화면 이탈 확인 및 이동 승인 흐름 관리
  */
-import { useDesignToHtml } from '~/composables/html/useDesignToHtml'
+import { useBuilderHtmlGeneration } from '~/composables/html/useBuilderHtmlGeneration'
 import { useBuilderStore } from '~/stores/builder'
 import type { BuilderDesignMethod, BuilderUploadFileType, BuilderView } from '~/stores/builder/type/types'
 
@@ -14,7 +14,7 @@ import type { BuilderDesignMethod, BuilderUploadFileType, BuilderView } from '~/
  */
 export function useBuilderNavigationGuard() {
   const builderStore = useBuilderStore()
-  const { cancelDesignHtmlGeneration } = useDesignToHtml()
+  const { cancelDesignHtmlGeneration } = useBuilderHtmlGeneration()
 
   /**
    * 빌더 화면 변경

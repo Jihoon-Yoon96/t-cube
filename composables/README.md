@@ -18,12 +18,10 @@ composables
 │  ├─ useBuilderFileAnalysis.ts
 │  └─ useFileAnalysis.ts
 ├─ html
-│  ├─ useBuilderHtmlGeneration.ts
-│  └─ useDesignToHtml.ts
+│  └─ useBuilderHtmlGeneration.ts
 ├─ layout
-│  ├─ useBuilderLayout.ts
-│  ├─ useLayoutCanvas.ts
-│  └─ useLayoutDesignToHtml.ts
+│  ├─ useBuilderLayoutCanvas.ts
+│  └─ useBuilderLayoutDesignToHtml.ts
 ├─ editor
 │  └─ useBuilderEditor.ts
 └─ navigation

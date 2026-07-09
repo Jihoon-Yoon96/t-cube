@@ -16,7 +16,7 @@
           class="primary-action"
           type="button"
           :disabled="!builderLayout.layoutBlocks.length"
-          @click="builderLayout.generateHtmlFromLayoutDesign"
+          @click="builderLayoutDesignToHtml.generateHtmlFromLayoutDesign"
         >
           <TcubeIcon icon="ri-code-s-slash-line" />
           <span>HTML 생성</span>
@@ -245,7 +245,8 @@
 </template>
 
 <script setup lang="ts">
-import { useBuilderLayout } from '~/composables/layout/useBuilderLayout'
+import { useBuilderLayoutCanvas } from '~/composables/layout/useBuilderLayoutCanvas'
+import { useBuilderLayoutDesignToHtml } from '~/composables/layout/useBuilderLayoutDesignToHtml'
 import { useBuilderView } from '~/composables/view/useBuilderView'
 import type { BuilderLayoutBlock, BuilderLayoutBlockType } from '~/stores/builder'
 
@@ -270,7 +271,8 @@ type ResizeState = {
   startHeight: number
 }
 
-const builderLayout = useBuilderLayout()
+const builderLayout = useBuilderLayoutCanvas()
+const builderLayoutDesignToHtml = useBuilderLayoutDesignToHtml()
 const builderView = useBuilderView()
 const canvasWrapRef = ref<HTMLElement | null>(null)
 const canvasRef = ref<HTMLElement | null>(null)
@@ -538,7 +540,7 @@ function getInputValue(event: Event) {
  * @param backgroundColor 대비를 계산할 CSS hex 색상값
  * @returns 어두운 배경이면 흰색, 밝은 배경이면 검은색
  */
-function getReadableTextColor(backgroundColor: string) {
+function getReadableTextColor(backgroundColor?: string) {
   const rgb = parseHexColor(backgroundColor)
 
   if (!rgb) return '#111827'
@@ -554,7 +556,9 @@ function getReadableTextColor(backgroundColor: string) {
  * @param value 변환할 hex 색상 문자열
  * @returns 변환된 RGB 값, 변환할 수 없으면 null
  */
-function parseHexColor(value: string) {
+function parseHexColor(value?: string) {
+  if (!value) return null
+
   const hex = value.trim().replace('#', '')
   const normalizedHex = hex.length === 3
     ? hex.split('').map((char) => `${char}${char}`).join('')
