@@ -214,6 +214,7 @@ const showElementList = ref(false)
 const inspectorMode = ref<'elements' | 'layout'>('elements')
 const selectedLayoutNodeId = ref('')
 const draggedLayoutNodeId = ref('')
+const pendingLayoutFocusId = ref('')
 const collapsedLayoutNodeIds = ref<string[]>([])
 const selectedImageElementId = ref('')
 const linkMenu = reactive({
@@ -295,6 +296,7 @@ function handlePreviewLoad() {
   })
 
   syncPreviewSelection()
+  focusSelectedLayoutNodeAfterPreviewRender()
 }
 
 /**
@@ -399,6 +401,41 @@ function syncPreviewSelection() {
     selectedPreviewElement.dataset.tcubeSelected = 'true'
     selectedPreviewElement.scrollIntoView({ block: 'center', inline: 'center' })
   }
+}
+
+/**
+ * iframe 렌더링이 끝난 뒤 선택된 레이아웃 노드 위치로 포커싱
+ */
+function focusSelectedLayoutNodeAfterPreviewRender() {
+  const focusId = pendingLayoutFocusId.value || selectedLayoutNodeId.value
+
+  if (!focusId) return
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const frameDocument = previewFrame.value?.contentDocument
+      const frameWindow = previewFrame.value?.contentWindow
+      const selectedLayoutElement = frameDocument?.querySelector<HTMLElement>(
+        `[data-tcube-layout-id="${focusId}"]`
+      )
+
+      if (!selectedLayoutElement) return
+
+      selectedLayoutElement.dataset.tcubeLayoutSelected = 'true'
+      selectedLayoutElement.scrollIntoView({ block: 'center', inline: 'center' })
+
+      const elementRect = selectedLayoutElement.getBoundingClientRect()
+      const currentScrollY = frameWindow?.scrollY || frameDocument?.documentElement.scrollTop || 0
+      const targetScrollY = currentScrollY + elementRect.top - ((frameWindow?.innerHeight || 0) / 2) + (elementRect.height / 2)
+
+      frameWindow?.scrollTo({
+        top: Math.max(0, targetScrollY),
+        behavior: 'auto'
+      })
+      previewFrame.value?.scrollIntoView({ block: 'nearest', inline: 'center' })
+      pendingLayoutFocusId.value = ''
+    })
+  })
 }
 
 /**
@@ -595,12 +632,14 @@ function handleLayoutDrop(layoutNode: ParsedHtmlLayoutNode, event: DragEvent) {
 
   if (movedLayoutNodeId) {
     selectedLayoutNodeId.value = movedLayoutNodeId
+    pendingLayoutFocusId.value = movedLayoutNodeId
     collapsedLayoutNodeIds.value = collapsedLayoutNodeIds.value.filter((nodeId) => {
       return currentDocument.value?.layoutNodes.some((node) => node.id === nodeId)
     })
     closeLinkMenu()
     nextTick(() => {
       syncPreviewSelection()
+      focusSelectedLayoutNodeAfterPreviewRender()
     })
   }
 }

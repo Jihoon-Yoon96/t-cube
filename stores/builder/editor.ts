@@ -89,19 +89,18 @@ export function useBuilderEditorState() {
   ) {
     if (!currentDocument.value) return null
 
-    const sourceNode = currentDocument.value.layoutNodes.find((node) => node.id === sourceNodeId)
-    const nextHtml = moveHtmlLayoutNode(currentDocument.value, sourceNodeId, targetNodeId, position)
+    const moveResult = moveHtmlLayoutNode(currentDocument.value, sourceNodeId, targetNodeId, position)
 
-    if (!nextHtml) return null
+    if (!moveResult) return null
 
     const previousSourceName = currentDocument.value.sourceName
-    currentDocument.value = parseHtmlDocument(nextHtml, {
+    currentDocument.value = parseHtmlDocument(moveResult.html, {
       sourceName: previousSourceName
     })
     selectedElementId.value = currentDocument.value.elements[0]?.id || null
     dirty.value = true
 
-    return currentDocument.value.layoutNodes.find((node) => node.signature === sourceNode?.signature)?.id || null
+    return currentDocument.value.layoutNodes.find((node) => node.selector === moveResult.movedSelector)?.id || null
   }
 
   return {

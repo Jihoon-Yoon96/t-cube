@@ -220,7 +220,10 @@ export function moveHtmlLayoutNode(
     targetElement.after(sourceElement)
   }
 
-  return serializeHtmlDocument(parsedDocument)
+  return {
+    html: serializeHtmlDocument(parsedDocument),
+    movedSelector: createElementSelector(sourceElement)
+  }
 }
 
 /**
