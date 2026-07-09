@@ -28,6 +28,12 @@ type GeminiAttemptResult = {
 const GEMINI_FALLBACK_MODEL = 'gemini-2.5-flash-lite'
 const GEMINI_RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504])
 
+/**
+ * 디자인 파일 기반 HTML 생성
+ *
+ * @param params - 원본 파일, 프롬프트, 더미 응답 옵션
+ * @returns AI 또는 더미 HTML 생성 응답
+ */
 export async function generateHtmlFromDesignFile(
   params: GenerateHtmlFromDesignFileParams
 ): Promise<DesignToHtmlResponse> {
@@ -59,6 +65,12 @@ export async function generateHtmlFromDesignFile(
   }
 }
 
+/**
+ * Gemini API 기반 HTML 생성
+ *
+ * @param params - 원본 파일, 제목, 프롬프트, API 설정
+ * @returns Gemini 응답 기반 HTML 생성 응답
+ */
 async function generateHtmlFromDesignFileWithGemini(params: {
   sourceFile: DesignToHtmlSourceFile
   title: string
@@ -91,6 +103,12 @@ async function generateHtmlFromDesignFileWithGemini(params: {
   }
 }
 
+/**
+ * 기본 모델 실패 시 대체 모델로 Gemini 요청 재시도
+ *
+ * @param params - Gemini 요청 파라미터
+ * @returns Gemini 생성 결과와 경고 목록
+ */
 async function requestGeminiWithFallback(params: {
   sourceFile: DesignToHtmlSourceFile
   title: string
@@ -136,6 +154,12 @@ async function requestGeminiWithFallback(params: {
   throw lastError
 }
 
+/**
+ * 재시도 가능한 Gemini 오류에 대한 동일 모델 재요청
+ *
+ * @param params - Gemini 요청 파라미터
+ * @returns Gemini JSON 응답
+ */
 async function requestGeminiWithRetry(params: {
   sourceFile: DesignToHtmlSourceFile
   prompt: string
@@ -159,6 +183,12 @@ async function requestGeminiWithRetry(params: {
   return requestGemini(params)
 }
 
+/**
+ * Gemini generateContent API 호출
+ *
+ * @param params - 원본 파일, 프롬프트, API 키, 모델명
+ * @returns 파싱된 Gemini JSON 응답
+ */
 async function requestGemini(params: {
   sourceFile: DesignToHtmlSourceFile
   prompt: string
@@ -203,10 +233,22 @@ async function requestGemini(params: {
   return parseGeminiToHtmlResponse(responseJson)
 }
 
+/**
+ * 업로드 파일 바이너리의 base64 문자열 변환
+ *
+ * @param sourceFile - 변환 대상 디자인 파일
+ * @returns base64 인코딩 문자열
+ */
 function createFileBase64(sourceFile: DesignToHtmlSourceFile) {
   return Buffer.from(sourceFile.data).toString('base64')
 }
 
+/**
+ * Gemini 응답에서 HTML 생성 JSON 추출
+ *
+ * @param responseJson - Gemini 원본 응답
+ * @returns HTML 생성 결과 JSON
+ */
 function parseGeminiToHtmlResponse(responseJson: unknown): GeminiToHtmlJson {
   const outputText = getGeminiOutputText(responseJson)
   const jsonText = extractJsonText(outputText)
@@ -222,6 +264,12 @@ function parseGeminiToHtmlResponse(responseJson: unknown): GeminiToHtmlJson {
   }
 }
 
+/**
+ * Gemini 후보 응답에서 텍스트 출력 병합
+ *
+ * @param responseJson - Gemini 원본 응답
+ * @returns 후보 응답의 텍스트 본문
+ */
 function getGeminiOutputText(responseJson: unknown) {
   if (!responseJson || typeof responseJson !== 'object') return ''
 
@@ -243,6 +291,12 @@ function getGeminiOutputText(responseJson: unknown) {
     .join('\n')
 }
 
+/**
+ * 코드 펜스가 포함된 JSON 문자열 정리
+ *
+ * @param value - Gemini 텍스트 응답
+ * @returns JSON 파싱 대상 문자열
+ */
 function extractJsonText(value: string) {
   const trimmed = value.trim()
   const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/)
@@ -252,6 +306,12 @@ function extractJsonText(value: string) {
   return trimmed
 }
 
+/**
+ * Gemini 오류 응답 메시지 추출
+ *
+ * @param responseJson - Gemini 오류 원본 응답
+ * @returns 사용자 노출용 오류 메시지
+ */
 function getGeminiErrorMessage(responseJson: unknown) {
   if (!responseJson || typeof responseJson !== 'object') return 'Gemini API 호출에 실패했습니다.'
 
@@ -260,6 +320,12 @@ function getGeminiErrorMessage(responseJson: unknown) {
   return typeof error?.message === 'string' ? error.message : 'Gemini API 호출에 실패했습니다.'
 }
 
+/**
+ * Gemini 오류의 재시도 가능 여부 판정
+ *
+ * @param error - 요청 중 발생한 오류
+ * @returns 재시도 가능 여부
+ */
 function isRetryableGeminiError(error: unknown) {
   if (!error || typeof error !== 'object') return false
 
@@ -269,6 +335,12 @@ function isRetryableGeminiError(error: unknown) {
   return GEMINI_RETRYABLE_STATUSES.has(Number(statusCode || status))
 }
 
+/**
+ * 비동기 재시도 지연
+ *
+ * @param ms - 지연 시간 밀리초
+ * @returns 지연 완료 Promise
+ */
 function sleep(ms: number) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms)

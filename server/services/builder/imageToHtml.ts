@@ -7,6 +7,12 @@ type GenerateHtmlFromImageDesignParams = {
   image: DesignToHtmlSourceFile
 }
 
+/**
+ * 이미지 디자인 파일 기반 HTML 생성
+ *
+ * @param params - 업로드 이미지 파일 파라미터
+ * @returns 이미지 기반 HTML 생성 응답
+ */
 export async function generateHtmlFromImageDesign(
   params: GenerateHtmlFromImageDesignParams
 ): Promise<DesignToHtmlResponse> {
@@ -21,6 +27,12 @@ export async function generateHtmlFromImageDesign(
   })
 }
 
+/**
+ * Gemini API 키 미설정 시 사용할 이미지 더미 HTML 생성
+ *
+ * @param title - 더미 문서 제목
+ * @returns 이미지 기반 더미 HTML 문자열
+ */
 function createDummyImageTemplateHtml(title: string) {
   return `<!doctype html>
 <html lang="ko">
@@ -203,6 +215,12 @@ function createDummyImageTemplateHtml(title: string) {
 </html>`
 }
 
+/**
+ * HTML 템플릿 삽입용 문자열 이스케이프
+ *
+ * @param value - 이스케이프 대상 문자열
+ * @returns HTML 엔티티로 치환된 문자열
+ */
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, '&amp;')

@@ -1,6 +1,12 @@
 import { generateHtmlFromImageDesign } from '~/server/services/builder/imageToHtml'
 import type { DesignToHtmlResponse } from '~/types/builder/design-to-html'
 
+/**
+ * 이미지 업로드 기반 HTML 생성 요청 처리
+ *
+ * @param event - 이미지 multipart form 요청 이벤트
+ * @returns 이미지 분석 기반 HTML 생성 응답
+ */
 export default defineEventHandler(async (event): Promise<DesignToHtmlResponse> => {
   const formData = await readMultipartFormData(event)
   const imageFile = formData?.find((item) => item.name === 'image')
@@ -28,6 +34,13 @@ export default defineEventHandler(async (event): Promise<DesignToHtmlResponse> =
   })
 })
 
+/**
+ * 지원 가능한 이미지 파일 여부 확인
+ *
+ * @param mimeType - 업로드 파일 MIME 타입
+ * @param fileName - 업로드 파일명
+ * @returns 이미지 파일 지원 여부
+ */
 function isSupportedImageFile(mimeType = '', fileName = '') {
   const extension = fileName.split('.').pop()?.toLowerCase() || ''
   const imageExtensions = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp']

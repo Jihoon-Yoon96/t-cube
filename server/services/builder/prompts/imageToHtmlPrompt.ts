@@ -1,3 +1,9 @@
+/**
+ * 이미지 디자인 분석용 Gemini 프롬프트 생성
+ *
+ * @param title - 문서 제목 후보
+ * @returns 이미지 기반 HTML 생성을 요청하는 프롬프트
+ */
 export function createImageToHtmlPrompt(title: string) {
   return [
     '업로드된 디자인 시안 이미지를 분석해서 단일 HTML 문서로 변환해주세요.',

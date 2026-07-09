@@ -1,3 +1,9 @@
+/**
+ * PDF 디자인 분석용 Gemini 프롬프트 생성
+ *
+ * @param title - 문서 제목 후보
+ * @returns PDF 기반 HTML 생성을 요청하는 프롬프트
+ */
 export function createPdfToHtmlPrompt(title: string) {
   return [
     '업로드된 PDF 디자인 시안을 분석해서 단일 HTML 문서로 변환해주세요.',

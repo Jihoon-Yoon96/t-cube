@@ -51,6 +51,12 @@ const IGNORED_TEXT_PARENT_SELECTOR = 'script, style, noscript, template, svg'
 const MAX_TEXT_ELEMENT_COUNT = 80
 const MAX_IMAGE_ELEMENT_COUNT = 40
 
+/**
+ * HTML 파일 텍스트 읽기 및 문서 파싱
+ *
+ * @param file - 업로드된 HTML 파일
+ * @returns 파싱된 편집 가능 HTML 문서
+ */
 export async function parseHtmlFile(file: File) {
   const html = await file.text()
 
@@ -59,27 +65,40 @@ export async function parseHtmlFile(file: File) {
   })
 }
 
+/**
+ * HTML 문자열에서 편집 가능한 텍스트, 이미지, 링크 요소 추출
+ *
+ * @param html - 파싱할 HTML 문자열
+ * @param options - 문서 출처 이름 옵션
+ * @returns 에디터에서 사용할 수 있는 HTML 문서 모델
+ */
 export function parseHtmlDocument(html: string, options: ParseHtmlDocumentOptions = {}): ParsedHtmlDocument {
+  // 브라우저 DOM 파서 사용 가능 여부 확인
   if (typeof DOMParser === 'undefined') {
     throw new Error('HTML 파서는 브라우저 환경에서만 사용할 수 있습니다.')
   }
 
+  // HTML 문자열을 브라우저 DOM 문서로 변환
   const parser = new DOMParser()
   const document = parser.parseFromString(html, 'text/html')
   const parseError = document.querySelector('parsererror')
 
+  // 파싱 실패 노드 기준 오류 감지
   if (parseError) {
     throw new Error('HTML 파일을 파싱할 수 없습니다. 파일 내용을 확인해주세요.')
   }
 
+  // 편집 대상에서 제외할 실행/메타성 노드 제거
   document.querySelectorAll(IGNORED_TEXT_PARENT_SELECTOR).forEach((node) => node.remove())
 
+  // 본문 루트 기준 편집 가능 요소 수집
   const root = document.body || document.documentElement
   const textElements = extractTextElements(root)
   const imageElements = extractImageElements(root)
   const linkElements = extractLinkElements(root, [...textElements, ...imageElements])
   const sourceName = options.sourceName || 'HTML 문서'
 
+  // 원본 HTML과 편집 가능 요소 목록을 포함한 문서 모델 구성
   return {
     id: createElementId('document', sourceName, html.length),
     title: normalizeText(document.title) || sourceName,
@@ -89,6 +108,12 @@ export function parseHtmlDocument(html: string, options: ParseHtmlDocumentOption
   }
 }
 
+/**
+ * 편집 상태가 반영된 HTML 문서 문자열 생성
+ *
+ * @param document - 편집 가능한 HTML 문서 모델
+ * @returns 에디터 스타일과 편집값이 반영된 HTML 문자열
+ */
 export function renderEditableHtmlDocument(document: ParsedHtmlDocument) {
   if (typeof DOMParser === 'undefined') {
     return document.rawHtml
@@ -145,6 +170,12 @@ export function renderEditableHtmlDocument(document: ParsedHtmlDocument) {
   return `<!doctype html>\n${parsedDocument.documentElement.outerHTML}`
 }
 
+/**
+ * 텍스트 편집 대상 요소 추출
+ *
+ * @param root - 탐색 기준 DOM 루트
+ * @returns 텍스트 편집 요소 목록
+ */
 function extractTextElements(root: HTMLElement): ParsedHtmlEditableElement[] {
   return Array.from(root.querySelectorAll<HTMLElement>(TEXT_SELECTOR))
     .map((element, index) => {
@@ -168,6 +199,13 @@ function extractTextElements(root: HTMLElement): ParsedHtmlEditableElement[] {
     .slice(0, MAX_TEXT_ELEMENT_COUNT)
 }
 
+/**
+ * 텍스트/이미지로 이미 등록되지 않은 링크 요소 추출
+ *
+ * @param root - 탐색 기준 DOM 루트
+ * @param existingElements - 중복 제외 기준 편집 요소 목록
+ * @returns 링크 편집 요소 목록
+ */
 function extractLinkElements(root: HTMLElement, existingElements: ParsedHtmlEditableElement[]): ParsedHtmlEditableElement[] {
   const existingSelectors = new Set(existingElements.map((element) => element.selector))
 
@@ -184,6 +222,12 @@ function extractLinkElements(root: HTMLElement, existingElements: ParsedHtmlEdit
     }))
 }
 
+/**
+ * 이미지 편집 대상 요소 추출
+ *
+ * @param root - 탐색 기준 DOM 루트
+ * @returns 이미지 편집 요소 목록
+ */
 function extractImageElements(root: HTMLElement): ParsedHtmlEditableElement[] {
   return Array.from(root.querySelectorAll<HTMLImageElement>('img'))
     .map((element, index) => {
@@ -207,12 +251,25 @@ function extractImageElements(root: HTMLElement): ParsedHtmlEditableElement[] {
     .slice(0, MAX_IMAGE_ELEMENT_COUNT)
 }
 
+/**
+ * 편집 요소 표시용 라벨 생성
+ *
+ * @param element - 라벨 생성 대상 요소
+ * @param index - 동일 타입 내 순번
+ * @returns 태그명 기반 라벨
+ */
 function createElementLabel(element: Element, index: number) {
   const tagName = element.tagName.toUpperCase()
 
   return `${tagName} ${index + 1}`
 }
 
+/**
+ * 원본 문서 내 요소 재탐색용 CSS 선택자 생성
+ *
+ * @param element - 선택자 생성 대상 요소
+ * @returns 루트부터 대상까지의 CSS 선택자 경로
+ */
 function createElementSelector(element: Element) {
   const paths: string[] = []
   let current: Element | null = element
@@ -231,10 +288,22 @@ function createElementSelector(element: Element) {
   return paths.join(' > ')
 }
 
+/**
+ * 공백 문자를 단일 공백으로 정규화
+ *
+ * @param value - 정규화할 문자열
+ * @returns 앞뒤 공백이 제거된 문자열
+ */
 function normalizeText(value: string) {
   return value.replace(/\s+/g, ' ').trim()
 }
 
+/**
+ * 요소에서 편집 가능한 텍스트 콘텐츠 추출
+ *
+ * @param element - 텍스트 추출 대상 요소
+ * @returns 편집 가능한 텍스트 또는 빈 문자열
+ */
 function getEditableTextContent(element: HTMLElement) {
   if (element instanceof HTMLAnchorElement && !isTextEditableAnchor(element)) {
     return ''
@@ -256,6 +325,12 @@ function getEditableTextContent(element: HTMLElement) {
   return ''
 }
 
+/**
+ * 링크 요소의 텍스트 직접 편집 가능 여부 판정
+ *
+ * @param element - 판정 대상 링크 요소
+ * @returns 텍스트 편집 가능 여부
+ */
 function isTextEditableAnchor(element: HTMLAnchorElement) {
   if (element.querySelector('img, picture, svg, video, table')) return false
   if (element.querySelectorAll('div').length > 1) return false
@@ -274,6 +349,12 @@ function isTextEditableAnchor(element: HTMLAnchorElement) {
   })
 }
 
+/**
+ * 편집 요소 식별용 안정 해시 ID 생성
+ *
+ * @param parts - ID 생성에 사용할 문자열 또는 숫자 조각
+ * @returns html 접두사가 포함된 요소 ID
+ */
 function createElementId(...parts: Array<string | number>) {
   const source = parts.join('-')
   let hash = 0
@@ -286,6 +367,11 @@ function createElementId(...parts: Array<string | number>) {
   return `html-${Math.abs(hash).toString(36)}`
 }
 
+/**
+ * 편집 가능 요소 강조 스타일 주입
+ *
+ * @param document - 스타일을 주입할 HTML 문서
+ */
 function injectEditorStyle(document: Document) {
   const style = document.createElement('style')
 
