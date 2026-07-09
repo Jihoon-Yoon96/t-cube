@@ -4,6 +4,7 @@
 
 
 import type { ParsedHtmlDocument, ParsedHtmlEditableElement } from '~/services/html/parseHtmlDocument'
+import { moveHtmlLayoutNode, parseHtmlDocument } from '~/services/html/parseHtmlDocument'
 
 /**
  * HTML 편집기 상태 구성
@@ -73,6 +74,36 @@ export function useBuilderEditorState() {
     dirty.value = true
   }
 
+  /**
+   * HTML 레이아웃 노드 순서 변경
+   *
+   * @param sourceNodeId 이동할 레이아웃 노드 id
+   * @param targetNodeId 기준 레이아웃 노드 id
+   * @param position 기준 노드 앞 또는 뒤 위치
+   * @returns 이동 후 다시 선택할 레이아웃 노드 id, 실패 시 null
+   */
+  function moveCurrentDocumentLayoutNode(
+    sourceNodeId: string,
+    targetNodeId: string,
+    position: 'before' | 'after'
+  ) {
+    if (!currentDocument.value) return null
+
+    const sourceNode = currentDocument.value.layoutNodes.find((node) => node.id === sourceNodeId)
+    const nextHtml = moveHtmlLayoutNode(currentDocument.value, sourceNodeId, targetNodeId, position)
+
+    if (!nextHtml) return null
+
+    const previousSourceName = currentDocument.value.sourceName
+    currentDocument.value = parseHtmlDocument(nextHtml, {
+      sourceName: previousSourceName
+    })
+    selectedElementId.value = currentDocument.value.elements[0]?.id || null
+    dirty.value = true
+
+    return currentDocument.value.layoutNodes.find((node) => node.signature === sourceNode?.signature)?.id || null
+  }
+
   return {
     selectedElementId,
     dirty,
@@ -80,6 +111,7 @@ export function useBuilderEditorState() {
     selectElement,
     markDirty,
     setCurrentDocument,
-    updateCurrentDocumentElement
+    updateCurrentDocumentElement,
+    moveCurrentDocumentLayoutNode
   }
 }

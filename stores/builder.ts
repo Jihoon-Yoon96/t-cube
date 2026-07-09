@@ -18,7 +18,8 @@ export type {
 export type {
   ParsedHtmlDocument,
   ParsedHtmlEditableElement,
-  ParsedHtmlElementType
+  ParsedHtmlElementType,
+  ParsedHtmlLayoutNode
 } from '~/services/html/parseHtmlDocument'
 
 /**

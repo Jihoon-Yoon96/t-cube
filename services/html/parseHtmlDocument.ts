@@ -16,12 +16,25 @@ export type ParsedHtmlEditableElement = {
   originalHref?: string
 }
 
+export type ParsedHtmlLayoutNode = {
+  id: string
+  signature: string
+  label: string
+  tagName: string
+  selector: string
+  parentSelector: string
+  depth: number
+  childCount: number
+  previewText: string
+}
+
 export type ParsedHtmlDocument = {
   id: string
   title: string
   sourceName: string
   rawHtml: string
   elements: ParsedHtmlEditableElement[]
+  layoutNodes: ParsedHtmlLayoutNode[]
 }
 
 type ParseHtmlDocumentOptions = {
@@ -48,8 +61,29 @@ const TEXT_SELECTOR = [
 ].join(',')
 
 const IGNORED_TEXT_PARENT_SELECTOR = 'script, style, noscript, template, svg'
+const LAYOUT_NODE_SELECTOR = [
+  'body > header',
+  'body > main',
+  'body > footer',
+  'body > nav',
+  'body > section',
+  'body > article',
+  'body > aside',
+  'body > div',
+  'main section',
+  'main article',
+  'main > div',
+  'section > section',
+  'section > article',
+  'section > div',
+  'article > section',
+  'article > div',
+  'ul > li',
+  'ol > li'
+].join(',')
 const MAX_TEXT_ELEMENT_COUNT = 80
 const MAX_IMAGE_ELEMENT_COUNT = 40
+const MAX_LAYOUT_NODE_COUNT = 120
 
 /**
  * HTML 파일 텍스트 읽기 및 문서 파싱
@@ -96,6 +130,7 @@ export function parseHtmlDocument(html: string, options: ParseHtmlDocumentOption
   const textElements = extractTextElements(root)
   const imageElements = extractImageElements(root)
   const linkElements = extractLinkElements(root, [...textElements, ...imageElements])
+  const layoutNodes = extractLayoutNodes(root)
   const sourceName = options.sourceName || 'HTML 문서'
 
   // 원본 HTML과 편집 가능 요소 목록을 포함한 문서 모델 구성
@@ -104,7 +139,8 @@ export function parseHtmlDocument(html: string, options: ParseHtmlDocumentOption
     title: normalizeText(document.title) || sourceName,
     sourceName,
     rawHtml: html,
-    elements: [...textElements, ...imageElements, ...linkElements]
+    elements: [...textElements, ...imageElements, ...linkElements],
+    layoutNodes
   }
 }
 
@@ -119,6 +155,81 @@ export function renderEditableHtmlDocument(document: ParsedHtmlDocument) {
     return document.rawHtml
   }
 
+  const parsedDocument = createRenderedHtmlDocument(document)
+
+  document.layoutNodes.forEach((layoutNode) => {
+    const element = parsedDocument.querySelector<HTMLElement>(layoutNode.selector)
+
+    if (!element) return
+
+    element.dataset.tcubeLayoutId = layoutNode.id
+  })
+
+  injectEditorStyle(parsedDocument)
+
+  return serializeHtmlDocument(parsedDocument)
+}
+
+/**
+ * ?먮뵒???ㅽ??쇱쓣 ?쒓굅??理쒖쥌 HTML 臾몄꽌 臾몄옄???앹꽦
+ *
+ * @param document - ?몄쭛 媛?ν븳 HTML 臾몄꽌 紐⑤뜽
+ * @returns ?몄쭛媛믪씠 諛섏쁺??理쒖쥌 HTML 臾몄옄??
+ */
+export function renderFinalHtmlDocument(document: ParsedHtmlDocument) {
+  if (typeof DOMParser === 'undefined') {
+    return document.rawHtml
+  }
+
+  return serializeHtmlDocument(createRenderedHtmlDocument(document))
+}
+
+/**
+ * HTML ?덉씠?꾩썐 ?몃뱶瑜?媛숈? 遺紐? ?덉뿉???대룞
+ *
+ * @param document - ?꾩옱 ?몄쭛 臾몄꽌
+ * @param sourceNodeId - ?대룞???덉씠?꾩썐 ?몃뱶 id
+ * @param targetNodeId - 湲곗??덉씠?꾩썐 ?몃뱶 id
+ * @param position - 湲곗??몃뱶 ?욎뿉 ?щ뒗吏 ?ㅼ뿉 ?щ뒗吏
+ * @returns ?대룞???앷린硫?HTML 臾몄옄?? ?덉쟾?섏? ?딆쑝硫?null
+ */
+export function moveHtmlLayoutNode(
+  document: ParsedHtmlDocument,
+  sourceNodeId: string,
+  targetNodeId: string,
+  position: 'before' | 'after'
+) {
+  const sourceNode = document.layoutNodes.find((node) => node.id === sourceNodeId)
+  const targetNode = document.layoutNodes.find((node) => node.id === targetNodeId)
+
+  if (!sourceNode || !targetNode || sourceNode.id === targetNode.id) return null
+  if (sourceNode.parentSelector !== targetNode.parentSelector) return null
+
+  const parser = new DOMParser()
+  const parsedDocument = parser.parseFromString(renderFinalHtmlDocument(document), 'text/html')
+  const sourceElement = parsedDocument.querySelector<HTMLElement>(sourceNode.selector)
+  const targetElement = parsedDocument.querySelector<HTMLElement>(targetNode.selector)
+
+  if (!sourceElement || !targetElement) return null
+  if (sourceElement.parentElement !== targetElement.parentElement) return null
+  if (sourceElement.contains(targetElement) || targetElement.contains(sourceElement)) return null
+
+  if (position === 'before') {
+    targetElement.before(sourceElement)
+  } else {
+    targetElement.after(sourceElement)
+  }
+
+  return serializeHtmlDocument(parsedDocument)
+}
+
+/**
+ * ?몄쭛媛믪씠 諛섏쁺??DOM 臾몄꽌瑜??앹꽦
+ *
+ * @param document - ?몄쭛 媛?ν븳 HTML 臾몄꽌 紐⑤뜽
+ * @returns content/src/href 蹂寃쎌씠 諛섏쁺??DOM 臾몄꽌
+ */
+function createRenderedHtmlDocument(document: ParsedHtmlDocument) {
   const parser = new DOMParser()
   const parsedDocument = parser.parseFromString(document.rawHtml, 'text/html')
 
@@ -165,9 +276,7 @@ export function renderEditableHtmlDocument(document: ParsedHtmlDocument) {
     }
   })
 
-  injectEditorStyle(parsedDocument)
-
-  return `<!doctype html>\n${parsedDocument.documentElement.outerHTML}`
+  return parsedDocument
 }
 
 /**
@@ -252,6 +361,36 @@ function extractImageElements(root: HTMLElement): ParsedHtmlEditableElement[] {
 }
 
 /**
+ * HTML ?몄뒪?앺꽣???쒖떆???덉씠?꾩썐 ?몃뱶 異붿텧
+ *
+ * @param root - ?먯깋 湲곗? DOM 猷⑦듃
+ * @returns ?쒓렇, depth, 遺紐? ?뺣낫瑜??ы븿???덉씠?꾩썐 ?몃뱶 紐⑸줉
+ */
+function extractLayoutNodes(root: HTMLElement): ParsedHtmlLayoutNode[] {
+  return Array.from(root.querySelectorAll<HTMLElement>(LAYOUT_NODE_SELECTOR))
+    .filter((element) => isMovableLayoutElement(element))
+    .map((element, index) => {
+      const selector = createElementSelector(element)
+      const label = createLayoutNodeLabel(element, index)
+      const tagName = element.tagName.toLowerCase()
+      const previewText = normalizeText(element.textContent || '').slice(0, 48)
+
+      return {
+        id: createElementId('layout', selector, index),
+        signature: createElementId('layout-signature', tagName, label, previewText),
+        label,
+        tagName,
+        selector,
+        parentSelector: element.parentElement ? createElementSelector(element.parentElement) : '',
+        depth: getLayoutNodeDepth(element),
+        childCount: element.children.length,
+        previewText
+      }
+    })
+    .slice(0, MAX_LAYOUT_NODE_COUNT)
+}
+
+/**
  * 편집 요소 표시용 라벨 생성
  *
  * @param element - 라벨 생성 대상 요소
@@ -260,6 +399,24 @@ function extractImageElements(root: HTMLElement): ParsedHtmlEditableElement[] {
  */
 function createElementLabel(element: Element, index: number) {
   const tagName = element.tagName.toUpperCase()
+
+  return `${tagName} ${index + 1}`
+}
+
+/**
+ * ?몄뒪?앺꽣???쒖떆???덉씠?꾩썐 ?몃뱶 ?쇰꺼 ?앹꽦
+ *
+ * @param element - ?쇰꺼 ?앹꽦 ????붿냼
+ * @param index - ?덉씠?꾩썐 ?몃뱶 ?쒕쾲
+ * @returns ?쒓렇紐?湲곕컲 ?쇰꺼
+ */
+function createLayoutNodeLabel(element: Element, index: number) {
+  const tagName = element.tagName.toUpperCase()
+  const className = element.getAttribute('class')?.split(/\s+/).filter(Boolean)[0]
+  const id = element.getAttribute('id')
+
+  if (id) return `${tagName}#${id}`
+  if (className) return `${tagName}.${className}`
 
   return `${tagName} ${index + 1}`
 }
@@ -286,6 +443,49 @@ function createElementSelector(element: Element) {
   }
 
   return paths.join(' > ')
+}
+
+/**
+ * ?덉씠?꾩썐 ?몃뱶 ?대룞 媛???щ? ?먯젙
+ *
+ * @param element - ?대룞 ????붿냼
+ * @returns ?몄뒪?앺꽣 ?대룞 ??곸쑝濡??덉쟾?섎㈃ true
+ */
+function isMovableLayoutElement(element: HTMLElement) {
+  if (!element.parentElement) return false
+  if (element.closest('table, thead, tbody, tfoot, tr, select')) return false
+  if (element.matches('script, style, link, meta, title, template, svg')) return false
+  if (element.children.length === 0 && !normalizeText(element.textContent || '')) return false
+
+  return true
+}
+
+/**
+ * body 湲곗??덉씠?꾩썐 ?몃뱶 湲딆씠 怨꾩궛
+ *
+ * @param element - 湲딆씠瑜?怨꾩궛???붿냼
+ * @returns body ?먯떇 湲곗? depth
+ */
+function getLayoutNodeDepth(element: HTMLElement) {
+  let depth = 0
+  let current = element.parentElement
+
+  while (current && current.tagName.toLowerCase() !== 'body' && current.tagName.toLowerCase() !== 'html') {
+    depth += 1
+    current = current.parentElement
+  }
+
+  return depth
+}
+
+/**
+ * DOM 臾몄꽌瑜?doctype ?ы븿 HTML 臾몄옄?대줈 蹂??
+ *
+ * @param document - 臾몄옄?대줈 蹂?섑븷 DOM 臾몄꽌
+ * @returns HTML 臾몄옄??
+ */
+function serializeHtmlDocument(document: Document) {
+  return `<!doctype html>\n${document.documentElement.outerHTML}`
 }
 
 /**
@@ -399,6 +599,12 @@ function injectEditorStyle(document: Document) {
 
     [data-tcube-editable-id][contenteditable="true"] {
       cursor: text !important;
+    }
+
+    [data-tcube-layout-id][data-tcube-layout-selected="true"] {
+      outline: 2px dashed rgba(59, 210, 131, 0.9) !important;
+      outline-offset: 7px !important;
+      box-shadow: 0 0 0 5px rgba(59, 210, 131, 0.16) !important;
     }
   `
 

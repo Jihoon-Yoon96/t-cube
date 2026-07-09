@@ -15,11 +15,33 @@
 
       <aside v-if="showElementList" class="html-editor-panel element-list-panel">
         <div class="html-editor-panel-title">
-          <strong>편집 요소</strong>
-          <span>{{ currentDocument.elements.length }}개</span>
+          <strong>{{ inspectorMode === 'elements' ? '편집 요소' : 'HTML 구조' }}</strong>
+          <span>{{ inspectorMode === 'elements' ? currentDocument.elements.length : currentDocument.layoutNodes.length }}개</span>
+        </div>
+
+        <div class="html-inspector-tabs" role="tablist" aria-label="HTML inspector mode">
+          <button
+            class="html-inspector-tab"
+            :class="{ active: inspectorMode === 'elements' }"
+            type="button"
+            @click="inspectorMode = 'elements'"
+          >
+            <TcubeIcon icon="ri-edit-box-line" />
+            <span>요소</span>
+          </button>
+          <button
+            class="html-inspector-tab"
+            :class="{ active: inspectorMode === 'layout' }"
+            type="button"
+            @click="inspectorMode = 'layout'"
+          >
+            <TcubeIcon icon="ri-node-tree" />
+            <span>구조</span>
+          </button>
         </div>
 
         <button
+          v-show="inspectorMode === 'elements'"
           v-for="element in currentDocument.elements"
           :key="element.id"
           class="element-list-item"
@@ -33,6 +55,49 @@
             <small>{{ getElementPreview(element) }}</small>
           </span>
         </button>
+
+        <div v-if="inspectorMode === 'layout'" class="html-inspector-list layout-node-list">
+          <div
+            v-for="layoutNode in visibleLayoutNodes"
+            :key="layoutNode.id"
+            class="layout-node-item"
+            :class="{
+              active: selectedLayoutNodeId === layoutNode.id,
+              dragging: draggedLayoutNodeId === layoutNode.id,
+              droppable: canDropLayoutNode(layoutNode)
+            }"
+            :style="{ paddingLeft: `${10 + layoutNode.depth * 14}px` }"
+            draggable="true"
+            role="button"
+            tabindex="0"
+            @click.stop="handleLayoutNodeClick(layoutNode)"
+            @dragstart="handleLayoutDragStart(layoutNode)"
+            @dragend="handleLayoutDragEnd"
+            @dragover.prevent="handleLayoutDragOver(layoutNode)"
+            @drop.prevent="handleLayoutDrop(layoutNode, $event)"
+            @keydown.enter.prevent="handleLayoutNodeClick(layoutNode)"
+            @keydown.space.prevent="handleLayoutNodeClick(layoutNode)"
+          >
+            <button
+              v-if="hasLayoutChildren(layoutNode)"
+              class="layout-node-toggle"
+              type="button"
+              :aria-label="isLayoutNodeCollapsed(layoutNode) ? '하위 구조 펼치기' : '하위 구조 접기'"
+              :aria-expanded="!isLayoutNodeCollapsed(layoutNode)"
+              @click.stop="toggleLayoutNode(layoutNode)"
+            >
+              <TcubeIcon :icon="isLayoutNodeCollapsed(layoutNode) ? 'ri-arrow-right-s-line' : 'ri-arrow-down-s-line'" />
+            </button>
+            <span v-else class="layout-node-toggle-spacer" />
+            <span class="layout-node-drag-icon" aria-hidden="true">
+              <TcubeIcon icon="ri-drag-move-2-line" />
+            </span>
+            <span>
+              <strong>{{ layoutNode.label }}</strong>
+              <small>{{ getLayoutNodePreview(layoutNode) }}</small>
+            </span>
+          </div>
+        </div>
       </aside>
 
       <main class="html-editor-preview">
@@ -135,7 +200,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ParsedHtmlEditableElement } from '~/stores/builder'
+import type { ParsedHtmlEditableElement, ParsedHtmlLayoutNode } from '~/stores/builder'
 import { useBuilderEditor } from '~/composables/editor/useBuilderEditor'
 import { useBuilderView } from '~/composables/view/useBuilderView'
 import { renderEditableHtmlDocument } from '~/services/html/parseHtmlDocument'
@@ -146,6 +211,10 @@ const previewFrame = ref<HTMLIFrameElement | null>(null)
 const previewWrap = ref<HTMLElement | null>(null)
 const imageInput = ref<HTMLInputElement | null>(null)
 const showElementList = ref(false)
+const inspectorMode = ref<'elements' | 'layout'>('elements')
+const selectedLayoutNodeId = ref('')
+const draggedLayoutNodeId = ref('')
+const collapsedLayoutNodeIds = ref<string[]>([])
 const selectedImageElementId = ref('')
 const linkMenu = reactive({
   visible: false,
@@ -161,6 +230,14 @@ const linkMenu = reactive({
 
 const currentDocument = computed(() => builderEditor.currentDocument)
 const previewHtml = computed(() => currentDocument.value ? renderEditableHtmlDocument(currentDocument.value) : '')
+const visibleLayoutNodes = computed(() => {
+  if (!currentDocument.value) return []
+
+  const collapsedIds = new Set(collapsedLayoutNodeIds.value)
+  const nodeBySelector = new Map(currentDocument.value.layoutNodes.map((node) => [node.selector, node]))
+
+  return currentDocument.value.layoutNodes.filter((node) => !hasCollapsedLayoutAncestor(node, collapsedIds, nodeBySelector))
+})
 const previewFrameWidth = computed(() => {
   if (builderView.activeViewport === 'tablet') return '768px'
   if (builderView.activeViewport === 'mobile') return '390px'
@@ -248,6 +325,14 @@ function handlePreviewDocumentClick(event: MouseEvent) {
     return
   }
 
+  const layoutElement = clickedElement?.closest<HTMLElement>('[data-tcube-layout-id]')
+
+  if (layoutElement?.dataset.tcubeLayoutId) {
+    selectedLayoutNodeId.value = layoutElement.dataset.tcubeLayoutId
+    syncPreviewSelection()
+    return
+  }
+
   closeLinkMenu()
 }
 
@@ -288,6 +373,21 @@ function syncPreviewSelection() {
   frameDocument.querySelectorAll<HTMLElement>('[data-tcube-selected]').forEach((element) => {
     delete element.dataset.tcubeSelected
   })
+
+  frameDocument.querySelectorAll<HTMLElement>('[data-tcube-layout-selected]').forEach((element) => {
+    delete element.dataset.tcubeLayoutSelected
+  })
+
+  if (selectedLayoutNodeId.value) {
+    const selectedLayoutElement = frameDocument.querySelector<HTMLElement>(
+      `[data-tcube-layout-id="${selectedLayoutNodeId.value}"]`
+    )
+
+    if (selectedLayoutElement) {
+      selectedLayoutElement.dataset.tcubeLayoutSelected = 'true'
+      selectedLayoutElement.scrollIntoView({ block: 'center', inline: 'center' })
+    }
+  }
 
   if (!builderEditor.selectedElementId) return
 
@@ -355,6 +455,7 @@ function startTextEdit(element: HTMLElement) {
  */
 function handleElementListClick(element: ParsedHtmlEditableElement) {
   builderEditor.selectElement(element.id)
+  selectedLayoutNodeId.value = ''
   closeLinkMenu()
 
   const previewElement = getPreviewElement(element.id)
@@ -379,6 +480,160 @@ function handleElementListClick(element: ParsedHtmlEditableElement) {
   }
 
   startTextEdit(previewElement)
+}
+
+/**
+ * HTML 구조 목록에서 레이아웃 노드 선택 및 미리보기 위치 이동
+ *
+ * @param layoutNode 선택할 레이아웃 노드
+ */
+function handleLayoutNodeClick(layoutNode: ParsedHtmlLayoutNode) {
+  selectedLayoutNodeId.value = layoutNode.id
+  builderEditor.selectElement(null)
+  closeLinkMenu()
+  syncPreviewSelection()
+}
+
+/**
+ * 레이아웃 노드 접힘 상태 전환
+ *
+ * @param layoutNode 접거나 펼칠 레이아웃 노드
+ */
+function toggleLayoutNode(layoutNode: ParsedHtmlLayoutNode) {
+  if (isLayoutNodeCollapsed(layoutNode)) {
+    collapsedLayoutNodeIds.value = collapsedLayoutNodeIds.value.filter((nodeId) => nodeId !== layoutNode.id)
+    return
+  }
+
+  collapsedLayoutNodeIds.value = [...collapsedLayoutNodeIds.value, layoutNode.id]
+}
+
+/**
+ * 레이아웃 노드 접힘 여부 확인
+ *
+ * @param layoutNode 확인할 레이아웃 노드
+ * @returns 접힌 노드이면 true
+ */
+function isLayoutNodeCollapsed(layoutNode: ParsedHtmlLayoutNode) {
+  return collapsedLayoutNodeIds.value.includes(layoutNode.id)
+}
+
+/**
+ * 레이아웃 노드의 하위 구조 존재 여부 확인
+ *
+ * @param layoutNode 확인할 레이아웃 노드
+ * @returns 하위 layout node가 있으면 true
+ */
+function hasLayoutChildren(layoutNode: ParsedHtmlLayoutNode) {
+  return Boolean(currentDocument.value?.layoutNodes.some((node) => node.parentSelector === layoutNode.selector))
+}
+
+/**
+ * 접힌 조상 노드가 있는지 확인
+ *
+ * @param layoutNode 표시 여부를 확인할 레이아웃 노드
+ * @param collapsedIds 접힌 레이아웃 노드 id 목록
+ * @param nodeBySelector selector 기준 레이아웃 노드 조회 맵
+ * @returns 접힌 조상이 있으면 true
+ */
+function hasCollapsedLayoutAncestor(
+  layoutNode: ParsedHtmlLayoutNode,
+  collapsedIds: Set<string>,
+  nodeBySelector: Map<string, ParsedHtmlLayoutNode>
+) {
+  let parentNode = nodeBySelector.get(layoutNode.parentSelector)
+
+  while (parentNode) {
+    if (collapsedIds.has(parentNode.id)) return true
+
+    parentNode = nodeBySelector.get(parentNode.parentSelector)
+  }
+
+  return false
+}
+
+/**
+ * 레이아웃 노드 드래그 시작 상태 저장
+ *
+ * @param layoutNode 드래그를 시작한 레이아웃 노드
+ */
+function handleLayoutDragStart(layoutNode: ParsedHtmlLayoutNode) {
+  draggedLayoutNodeId.value = layoutNode.id
+  selectedLayoutNodeId.value = layoutNode.id
+  closeLinkMenu()
+}
+
+/**
+ * 레이아웃 노드 드래그 종료 상태 초기화
+ */
+function handleLayoutDragEnd() {
+  draggedLayoutNodeId.value = ''
+}
+
+/**
+ * 드롭 가능 대상 위에서 기본 브라우저 드롭을 허용
+ *
+ * @param layoutNode 현재 마우스가 올라간 레이아웃 노드
+ */
+function handleLayoutDragOver(layoutNode: ParsedHtmlLayoutNode) {
+  if (!canDropLayoutNode(layoutNode)) return
+}
+
+/**
+ * 레이아웃 노드 드롭 처리 및 raw HTML 순서 변경
+ *
+ * @param layoutNode 드롭 기준 레이아웃 노드
+ * @param event 드롭 위치 계산에 사용하는 DragEvent
+ */
+function handleLayoutDrop(layoutNode: ParsedHtmlLayoutNode, event: DragEvent) {
+  if (!draggedLayoutNodeId.value || !canDropLayoutNode(layoutNode)) return
+
+  const position = getLayoutDropPosition(event)
+  const movedLayoutNodeId = builderEditor.moveCurrentDocumentLayoutNode(draggedLayoutNodeId.value, layoutNode.id, position)
+
+  draggedLayoutNodeId.value = ''
+
+  if (movedLayoutNodeId) {
+    selectedLayoutNodeId.value = movedLayoutNodeId
+    collapsedLayoutNodeIds.value = collapsedLayoutNodeIds.value.filter((nodeId) => {
+      return currentDocument.value?.layoutNodes.some((node) => node.id === nodeId)
+    })
+    closeLinkMenu()
+    nextTick(() => {
+      syncPreviewSelection()
+    })
+  }
+}
+
+/**
+ * 레이아웃 노드 드롭 가능 여부 확인
+ *
+ * @param layoutNode 드롭 대상 레이아웃 노드
+ * @returns 같은 부모의 다른 노드이면 true
+ */
+function canDropLayoutNode(layoutNode: ParsedHtmlLayoutNode) {
+  if (!draggedLayoutNodeId.value) return false
+  if (draggedLayoutNodeId.value === layoutNode.id) return false
+
+  const draggedNode = currentDocument.value?.layoutNodes.find((node) => node.id === draggedLayoutNodeId.value)
+
+  return Boolean(draggedNode && draggedNode.parentSelector === layoutNode.parentSelector)
+}
+
+/**
+ * 드롭 좌표 기준으로 before/after 위치 계산
+ *
+ * @param event 드롭 이벤트
+ * @returns 기준 노드 앞 또는 뒤 위치
+ */
+function getLayoutDropPosition(event: DragEvent): 'before' | 'after' {
+  const target = event.currentTarget
+
+  if (!(target instanceof HTMLElement)) return 'after'
+
+  const rect = target.getBoundingClientRect()
+
+  return event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
 }
 
 /**
@@ -777,6 +1032,24 @@ function getElementPreview(element: ParsedHtmlEditableElement) {
 
 /**
  * 편집 요소 유형에 맞는 remix icon 클래스를 반환
+ *
+ * @param element 아이콘을 결정할 파싱 요소 정보
+ * @returns 요소 유형에 맞는 아이콘 클래스명
+ */
+/**
+ * HTML 구조 목록에 표시할 레이아웃 노드 설명 생성
+ *
+ * @param layoutNode 구조 목록에 표시할 레이아웃 노드
+ * @returns 자식 수와 텍스트 일부를 포함한 설명
+ */
+function getLayoutNodePreview(layoutNode: ParsedHtmlLayoutNode) {
+  const value = layoutNode.previewText || `${layoutNode.childCount} child`
+
+  return value.length > 42 ? `${value.slice(0, 42)}...` : value
+}
+
+/**
+ * 편집 요소 유형에 맞는 remix icon 클래스명 반환
  *
  * @param element 아이콘을 결정할 파싱 요소 정보
  * @returns 요소 유형에 맞는 아이콘 클래스명

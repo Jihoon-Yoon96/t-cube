@@ -21,6 +21,7 @@ export function useBuilderEditor() {
     selectElement: builderStore.selectElement,
     markDirty: builderStore.markDirty,
     setCurrentDocument: builderStore.setCurrentDocument,
-    updateCurrentDocumentElement: builderStore.updateCurrentDocumentElement
+    updateCurrentDocumentElement: builderStore.updateCurrentDocumentElement,
+    moveCurrentDocumentLayoutNode: builderStore.moveCurrentDocumentLayoutNode
   })
 }

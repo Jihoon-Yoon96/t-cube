@@ -404,6 +404,43 @@ const stageSubtitle = computed(() => {
   overflow-y: auto;
 }
 
+.html-inspector-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  border-bottom: 1px solid rgba(174, 183, 232, 0.1);
+  padding: 10px;
+}
+
+.html-inspector-tab {
+  min-width: 0;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid rgba(174, 183, 232, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text-secondary);
+  padding: 0 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.html-inspector-tab:hover,
+.html-inspector-tab.active {
+  border-color: rgba(139, 145, 255, 0.44);
+  background: rgba(139, 145, 255, 0.14);
+  color: #ffffff;
+}
+
+.html-inspector-list {
+  min-height: 0;
+}
+
 .element-list-item {
   width: calc(100% - 20px);
   min-height: 64px;
@@ -452,6 +489,103 @@ const stageSubtitle = computed(() => {
 }
 
 .element-list-item small {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layout-node-list {
+  padding: 10px;
+}
+
+.layout-node-item {
+  width: 100%;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+  padding: 9px 10px;
+  font: inherit;
+  text-align: left;
+  cursor: grab;
+}
+
+.layout-node-item:hover,
+.layout-node-item.active {
+  border-color: rgba(59, 210, 131, 0.34);
+  background: rgba(59, 210, 131, 0.1);
+}
+
+.layout-node-item.dragging {
+  opacity: 0.48;
+}
+
+.layout-node-item.droppable {
+  border-color: rgba(139, 145, 255, 0.34);
+}
+
+.layout-node-toggle,
+.layout-node-toggle-spacer {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.layout-node-toggle {
+  border: 1px solid rgba(174, 183, 232, 0.14);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text-secondary);
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.layout-node-toggle:hover {
+  border-color: rgba(139, 145, 255, 0.42);
+  background: rgba(139, 145, 255, 0.14);
+  color: #ffffff;
+}
+
+.layout-node-drag-icon {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  background: rgba(59, 210, 131, 0.14);
+  color: #79e6ad;
+  font-size: 18px;
+}
+
+.layout-node-item span {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.layout-node-item strong {
+  overflow: hidden;
+  color: var(--text-strong);
+  font-size: 12px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layout-node-item small {
   overflow: hidden;
   color: var(--text-secondary);
   font-size: 11px;
