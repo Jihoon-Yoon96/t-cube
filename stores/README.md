@@ -21,9 +21,7 @@ stores
 
 ## 구성 원칙
 
-`stores/builder.ts`는 빌더 전역 상태를 조립하는 Pinia store다.
-
-이전에는 composable 흐름까지 함께 조립하는 facade 역할을 했지만, 현재 구조에서는 상태 관리 책임만 가진다. 파일 분석, AI 변환, 화면 이동 guard 같은 작업 흐름은 `composables` 하위 관심사별 `useBuilder*` 공개 composable에서 조립한다.
+`stores/builder.ts`는 빌더 전역 상태를 조립하는 Pinia store다. 현재 store는 composable 흐름을 조립하지 않고 상태 관리 책임만 가진다.
 
 상태 모듈은 관심사별로 나눈다.
 
@@ -31,6 +29,8 @@ stores
 - `upload.ts`: 파일 업로드 유형, 업로드 파일, 분석 상태
 - `editor.ts`: HTML 편집 문서, 선택 요소, dirty 상태
 - `type/types.ts`: builder store와 관련 composable에서 공유하는 타입
+
+파일 분석, AI 변환, 화면 이동 guard, 레이아웃 HTML 생성 같은 작업 흐름은 `composables` 하위 관심사별 composable에서 수행한다.
 
 ## 상태 분리 기준
 
@@ -50,16 +50,17 @@ store에 두지 않는 것이 좋은 상태:
 
 ## 컴포넌트에서 사용하는 방식
 
-빌더 화면 컴포넌트는 필요한 관심사별 공개 composable만 사용한다.
+빌더 화면 컴포넌트는 필요한 관심사별 composable을 사용한다.
 
 ```ts
 const builderView = useBuilderView()
 const builderUpload = useBuilderUpload()
+const builderHtmlGeneration = useBuilderHtmlGeneration()
 ```
 
-`useBuilder*` 공개 composable은 `useBuilderStore()`의 상태와 내부 composable 흐름을 조립해서 화면에 제공한다. 따라서 컴포넌트는 내부 store 모듈이나 internal composable을 직접 조립하지 않아도 된다.
+`useBuilder*` composable은 store 상태와 관련 작업 흐름을 컴포넌트가 사용하기 쉬운 형태로 제공한다.
 
-단순히 상태만 필요하고 작업 흐름이 필요 없는 경우에는 `useBuilderStore()`를 직접 사용할 수 있다.
+컴포넌트가 store를 직접 사용할 수도 있지만, 화면 이동 guard나 요청 취소 같은 정책이 필요한 경우에는 관련 composable을 우선 사용한다.
 
 ```ts
 const builderStore = useBuilderStore()
