@@ -1,4 +1,14 @@
-export type ParsedHtmlElementType = 'text' | 'image' | 'link'
+export type ParsedHtmlElementType = 'text' | 'image' | 'link' | 'picture' | 'video'
+
+export type ParsedHtmlMediaSource = {
+  selector: string
+  label: string
+  attribute: 'src' | 'srcset'
+  src: string
+  originalSrc: string
+  media?: string
+  mimeType?: string
+}
 
 export type ParsedHtmlEditableElement = {
   id: string
@@ -14,6 +24,7 @@ export type ParsedHtmlEditableElement = {
   originalAlt?: string
   href?: string
   originalHref?: string
+  mediaSources?: ParsedHtmlMediaSource[]
 }
 
 export type ParsedHtmlLayoutNode = {
@@ -114,7 +125,8 @@ export function parseHtmlDocument(html: string, options: ParseHtmlDocumentOption
   const root = document.body || document.documentElement
   const textElements = extractTextElements(root)
   const imageElements = extractImageElements(root)
-  const linkElements = extractLinkElements(root, [...textElements, ...imageElements])
+  const mediaElements = extractMediaElements(root)
+  const linkElements = extractLinkElements(root, [...textElements, ...imageElements, ...mediaElements])
   const layoutNodes = extractLayoutNodes(root)
   const sourceName = options.sourceName || 'HTML 문서'
 
@@ -124,7 +136,7 @@ export function parseHtmlDocument(html: string, options: ParseHtmlDocumentOption
     title: normalizeText(document.title) || sourceName,
     sourceName,
     rawHtml: html,
-    elements: [...textElements, ...imageElements, ...linkElements],
+    elements: [...textElements, ...imageElements, ...mediaElements, ...linkElements],
     layoutNodes
   }
 }
@@ -257,6 +269,24 @@ function createRenderedHtmlDocument(document: ParsedHtmlDocument) {
       }
     }
 
+    if (editableElement.type === 'picture' || editableElement.type === 'video') {
+      editableElement.mediaSources?.forEach((mediaSource) => {
+        if (mediaSource.src === mediaSource.originalSrc) return
+
+        const sourceElement = parsedDocument.querySelector<HTMLElement>(mediaSource.selector)
+
+        sourceElement?.setAttribute(mediaSource.attribute, mediaSource.src)
+      })
+
+      if (editableElement.href !== editableElement.originalHref) {
+        const linkElement = element.closest('a')
+
+        if (linkElement) {
+          linkElement.href = editableElement.href || '#'
+        }
+      }
+    }
+
     if (editableElement.type === 'link' && element instanceof HTMLAnchorElement) {
       if (editableElement.href !== editableElement.originalHref) {
         element.href = editableElement.href || '#'
@@ -327,6 +357,7 @@ function extractLinkElements(root: HTMLElement, existingElements: ParsedHtmlEdit
  */
 function extractImageElements(root: HTMLElement): ParsedHtmlEditableElement[] {
   return Array.from(root.querySelectorAll<HTMLImageElement>('img'))
+    .filter((element) => !element.closest('picture'))
     .map((element, index) => {
       const linkElement = element.closest('a')
       const href = linkElement?.getAttribute('href')
@@ -346,6 +377,86 @@ function extractImageElements(root: HTMLElement): ParsedHtmlEditableElement[] {
       }
     })
     .slice(0, MAX_IMAGE_ELEMENT_COUNT)
+}
+
+/**
+ * picture/video 미디어 컨테이너 및 내부 source 목록 추출
+ *
+ * @param root 탐색 기준 DOM 루트
+ * @returns 미디어 편집 대상 요소 목록
+ */
+function extractMediaElements(root: HTMLElement): ParsedHtmlEditableElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>('picture, video'))
+    .map((element, index) => {
+      const isPicture = element.tagName.toLowerCase() === 'picture'
+      const mediaSources = extractMediaSources(element, isPicture ? 'picture' : 'video')
+      const linkElement = element.closest('a')
+      const href = linkElement?.getAttribute('href')
+
+      return {
+        id: createElementId(isPicture ? 'picture' : 'video', index, createElementSelector(element)),
+        type: isPicture ? 'picture' as const : 'video' as const,
+        label: createElementLabel(element, index),
+        tagName: element.tagName.toLowerCase(),
+        selector: createElementSelector(element),
+        mediaSources,
+        href: href === null ? undefined : href,
+        originalHref: href === null ? undefined : href
+      }
+    })
+}
+
+/**
+ * 미디어 컨테이너의 source와 fallback URL 정보 추출
+ *
+ * @param element picture 또는 video 컨테이너 요소
+ * @param type 컨테이너 미디어 유형
+ * @returns URL 수정에 사용할 미디어 source 목록
+ */
+function extractMediaSources(element: HTMLElement, type: 'picture' | 'video'): ParsedHtmlMediaSource[] {
+  const sources = Array.from(element.querySelectorAll<HTMLSourceElement>(':scope > source')).map((source, index) => {
+    const attribute = type === 'picture' ? 'srcset' as const : 'src' as const
+    const src = source.getAttribute(attribute) || ''
+
+    return {
+      selector: createElementSelector(source),
+      label: `SOURCE ${index + 1}`,
+      attribute,
+      src,
+      originalSrc: src,
+      media: source.getAttribute('media') || undefined,
+      mimeType: source.getAttribute('type') || undefined
+    }
+  })
+
+  if (type === 'picture') {
+    const fallbackImage = element.querySelector<HTMLImageElement>('img')
+
+    if (fallbackImage) {
+      const src = fallbackImage.getAttribute('src') || ''
+
+      sources.push({
+        selector: createElementSelector(fallbackImage),
+        label: 'IMG fallback',
+        attribute: 'src',
+        src,
+        originalSrc: src
+      })
+    }
+  } else if (element.hasAttribute('src')) {
+    const src = element.getAttribute('src') || ''
+
+    sources.unshift({
+      selector: createElementSelector(element),
+      label: 'VIDEO src',
+      attribute: 'src',
+      src,
+      originalSrc: src,
+      mimeType: element.getAttribute('type') || undefined
+    })
+  }
+
+  return sources
 }
 
 /**

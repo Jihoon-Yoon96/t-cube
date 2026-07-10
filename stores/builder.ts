@@ -19,7 +19,8 @@ export type {
   ParsedHtmlDocument,
   ParsedHtmlEditableElement,
   ParsedHtmlElementType,
-  ParsedHtmlLayoutNode
+  ParsedHtmlLayoutNode,
+  ParsedHtmlMediaSource
 } from '~/services/html/parseHtmlDocument'
 
 /**

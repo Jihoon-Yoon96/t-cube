@@ -9,7 +9,7 @@
         ref="imageInput"
         class="html-image-input"
         type="file"
-        accept="image/*"
+        :accept="selectedMediaInputType === 'video' ? 'video/*' : 'image/*'"
         @change="handleImageInputChange"
       >
 
@@ -162,7 +162,7 @@
             @keydown.esc.stop.prevent="closeLinkMenu"
           >
             <template v-if="linkMenu.mode === 'menu'">
-              <button v-if="linkMenu.targetType !== 'image' || linkMenu.hasLink" type="button" @click.stop="openSelectedLinkHrefEdit">
+              <button v-if="linkMenu.targetType === 'link' || linkMenu.targetType === 'text' || linkMenu.hasLink" type="button" @click.stop="openSelectedLinkHrefEdit">
                 <TcubeIcon icon="ri-link" />
                 <span>링크 수정</span>
               </button>
@@ -170,13 +170,9 @@
                 <TcubeIcon icon="ri-text" />
                 <span>텍스트 수정</span>
               </button>
-              <button v-if="linkMenu.targetType === 'image'" type="button" @click.stop="startSelectedImageEdit">
-                <TcubeIcon icon="ri-upload-cloud-2-line" />
-                <span>이미지 업로드</span>
-              </button>
-              <button v-if="linkMenu.targetType === 'image'" type="button" @click.stop="openSelectedImageSrcEdit">
-                <TcubeIcon icon="ri-links-line" />
-                <span>이미지 url 수정</span>
+              <button v-if="linkMenu.targetType === 'image' || linkMenu.targetType === 'picture' || linkMenu.targetType === 'video'" type="button" @click.stop="openSelectedMediaSrcEdit">
+                <TcubeIcon icon="ri-edit-box-line" />
+                <span>{{ linkMenu.targetType === 'video' ? '비디오 수정' : '이미지 수정' }}</span>
               </button>
             </template>
 
@@ -197,22 +193,35 @@
               </div>
             </template>
 
-            <template v-else>
-              <label>
-                <span>이미지 URL</span>
-                <input
-                  v-model="linkMenu.src"
-                  type="text"
-                  placeholder="https://..."
-                  @keydown.enter.prevent="applySelectedImageSrc"
-                  @keydown.esc.prevent="closeLinkMenu"
+            <template v-else-if="linkMenu.mode === 'media-src'">
+              <div v-for="mediaSource in linkMenu.mediaSources" :key="mediaSource.selector" class="html-media-source-field">
+                <label>
+                  <span>{{ mediaSource.label }}<template v-if="mediaSource.media"> · {{ mediaSource.media }}</template><template v-else-if="mediaSource.mimeType"> · {{ mediaSource.mimeType }}</template></span>
+                  <input
+                    v-model="mediaSource.src"
+                    class="html-media-source-input"
+                    type="text"
+                    placeholder="https://..."
+                    @keydown.enter.prevent="applySelectedMediaSources"
+                    @keydown.esc.prevent="closeLinkMenu"
+                  >
+                </label>
+                <button
+                  type="button"
+                  :aria-label="linkMenu.targetType === 'video' ? '비디오 업로드' : '이미지 업로드'"
+                  :title="linkMenu.targetType === 'video' ? '비디오 업로드' : '이미지 업로드'"
+                  @click.stop="openMediaSourcePicker(mediaSource.selector)"
                 >
-              </label>
+                  <TcubeIcon icon="ri-upload-cloud-2-line" />
+                  <span>{{ linkMenu.targetType === 'video' ? '비디오 업로드' : '이미지 업로드' }}</span>
+                </button>
+              </div>
               <div class="html-link-edit-actions">
                 <button type="button" @click.stop="closeLinkMenu">취소</button>
-                <button type="button" @click.stop="applySelectedImageSrc">적용</button>
+                <button type="button" @click.stop="applySelectedMediaSources">적용</button>
               </div>
             </template>
+
           </div>
         </div>
       </main>
@@ -227,7 +236,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ParsedHtmlEditableElement, ParsedHtmlLayoutNode } from '~/stores/builder'
+import type { ParsedHtmlEditableElement, ParsedHtmlLayoutNode, ParsedHtmlMediaSource } from '~/stores/builder'
 import { useBuilderEditor } from '~/composables/editor/useBuilderEditor'
 import { useBuilderView } from '~/composables/view/useBuilderView'
 import { renderEditableHtmlDocument } from '~/services/html/parseHtmlDocument'
@@ -244,14 +253,16 @@ const draggedLayoutNodeId = ref('')
 const pendingLayoutFocusId = ref('')
 const collapsedLayoutNodeIds = ref<string[]>([])
 const selectedImageElementId = ref('')
+const selectedMediaSourceSelector = ref('')
+const selectedMediaInputType = ref<'image' | 'video'>('image')
 const linkMenu = reactive({
   visible: false,
-  mode: 'menu' as 'menu' | 'href' | 'image-src',
-  targetType: 'link' as 'link' | 'text' | 'image',
+  mode: 'menu' as 'menu' | 'href' | 'media-src',
+  targetType: 'link' as 'link' | 'text' | 'image' | 'picture' | 'video',
   hasLink: false,
   elementId: '',
   href: '',
-  src: '',
+  mediaSources: [] as ParsedHtmlMediaSource[],
   x: 0,
   y: 0
 })
@@ -339,6 +350,11 @@ function handlePreviewLoad() {
         return
       }
 
+      if (isMediaElement(element)) {
+        openMediaMenu(element, event)
+        return
+      }
+
       closeLinkMenu()
     })
   })
@@ -357,6 +373,16 @@ function handlePreviewDocumentClick(event: MouseEvent) {
   const clickedElement = event.target instanceof HTMLElement ? event.target : null
   const editableElement = clickedElement?.closest<HTMLElement>('[data-tcube-editable-id]')
   const clickedLink = clickedElement?.closest<HTMLAnchorElement>('a')
+
+  if (isMediaElement(editableElement)) {
+    event.preventDefault()
+    event.stopPropagation()
+    if (editableElement.dataset.tcubeEditableId) {
+      builderEditor.selectElement(editableElement.dataset.tcubeEditableId)
+    }
+    openMediaMenu(editableElement, event)
+    return
+  }
 
   if (clickedLink && clickedElement) {
     event.preventDefault()
@@ -610,6 +636,11 @@ function handleElementListClick(element: ParsedHtmlEditableElement) {
     }
 
     closeLinkMenu()
+    return
+  }
+
+  if ((element.type === 'picture' || element.type === 'video') && isMediaElement(previewElement)) {
+    openMediaMenuAtElement(previewElement)
     return
   }
 
@@ -879,7 +910,6 @@ function openLinkMenu(element: HTMLAnchorElement, event: MouseEvent, targetType:
   linkMenu.visible = true
   linkMenu.mode = 'menu'
   linkMenu.targetType = targetType
-  linkMenu.hasLink = true
   linkMenu.elementId = elementId
   linkMenu.href = element.getAttribute('href') || ''
   linkMenu.x = position.x
@@ -902,7 +932,6 @@ function openLinkMenuAtElement(element: HTMLAnchorElement, targetType: 'link' | 
   linkMenu.visible = true
   linkMenu.mode = 'menu'
   linkMenu.targetType = targetType
-  linkMenu.hasLink = true
   linkMenu.elementId = elementId
   linkMenu.href = element.getAttribute('href') || ''
   linkMenu.x = position.x
@@ -963,7 +992,7 @@ function openAnchorToolbarAtElement(element: HTMLElement) {
  */
 function openImageMenu(element: HTMLImageElement, event: MouseEvent) {
   const elementId = element.dataset.tcubeEditableId
-  const linkElement = getImageLinkElement(element)
+  const linkElement = element.closest<HTMLAnchorElement>('a')
 
   if (!elementId) return
 
@@ -975,7 +1004,6 @@ function openImageMenu(element: HTMLImageElement, event: MouseEvent) {
   linkMenu.hasLink = Boolean(linkElement)
   linkMenu.elementId = elementId
   linkMenu.href = linkElement?.getAttribute('href') || ''
-  linkMenu.src = element.getAttribute('src') || ''
   linkMenu.x = position.x
   linkMenu.y = position.y
 }
@@ -987,7 +1015,7 @@ function openImageMenu(element: HTMLImageElement, event: MouseEvent) {
  */
 function openImageMenuAtElement(element: HTMLImageElement) {
   const elementId = element.dataset.tcubeEditableId
-  const linkElement = getImageLinkElement(element)
+  const linkElement = element.closest<HTMLAnchorElement>('a')
 
   if (!elementId) return
 
@@ -999,9 +1027,110 @@ function openImageMenuAtElement(element: HTMLImageElement) {
   linkMenu.hasLink = Boolean(linkElement)
   linkMenu.elementId = elementId
   linkMenu.href = linkElement?.getAttribute('href') || ''
-  linkMenu.src = element.getAttribute('src') || ''
   linkMenu.x = position.x
   linkMenu.y = position.y
+}
+
+/**
+ * picture/video 클릭 위치를 기준으로 미디어 편집 팝업 표시
+ *
+ * @param element 편집할 picture 또는 video 요소
+ * @param event 팝업 위치 계산에 사용할 마우스 이벤트
+ * @returns 없음
+ */
+function openMediaMenu(element: HTMLPictureElement | HTMLVideoElement, event: MouseEvent) {
+  const elementId = element.dataset.tcubeEditableId
+  const linkElement = element.closest<HTMLAnchorElement>('a')
+
+  if (!elementId) return
+
+  const position = getPopoverPosition(event)
+
+  linkMenu.visible = true
+  linkMenu.mode = 'menu'
+  linkMenu.targetType = element.tagName.toLowerCase() === 'picture' ? 'picture' : 'video'
+  linkMenu.hasLink = Boolean(linkElement)
+  linkMenu.elementId = elementId
+  linkMenu.href = linkElement?.getAttribute('href') || ''
+  linkMenu.x = position.x
+  linkMenu.y = position.y
+}
+
+/**
+ * picture/video 요소 위치를 기준으로 미디어 편집 팝업 표시
+ *
+ * @param element 편집할 picture 또는 video 요소
+ * @returns 없음
+ */
+function openMediaMenuAtElement(element: HTMLPictureElement | HTMLVideoElement) {
+  const elementId = element.dataset.tcubeEditableId
+  const linkElement = element.closest<HTMLAnchorElement>('a')
+
+  if (!elementId) return
+
+  const position = getPopoverPositionByElement(element)
+
+  linkMenu.visible = true
+  linkMenu.mode = 'menu'
+  linkMenu.targetType = element.tagName.toLowerCase() === 'picture' ? 'picture' : 'video'
+  linkMenu.hasLink = Boolean(linkElement)
+  linkMenu.elementId = elementId
+  linkMenu.href = linkElement?.getAttribute('href') || ''
+  linkMenu.x = position.x
+  linkMenu.y = position.y
+}
+
+/**
+ * 선택한 img/picture/video의 URL 및 업로드 편집 화면 열기
+ *
+ * @returns 없음
+ */
+function openSelectedMediaSrcEdit() {
+  linkMenu.mediaSources = getMediaSources(linkMenu.elementId)
+  linkMenu.mode = 'media-src'
+  nextTick(() => {
+    const input = previewWrap.value?.querySelector<HTMLInputElement>('.html-media-source-input')
+    input?.focus()
+  })
+}
+
+/**
+ * 미디어 URL 편집 목록에서 선택한 source 파일 업로드 시작
+ *
+ * @param mediaSourceSelector 업로드 대상 source 선택자
+ * @returns 없음
+ */
+function openMediaSourcePicker(mediaSourceSelector: string) {
+  openMediaPicker(linkMenu.elementId, mediaSourceSelector)
+}
+
+/**
+ * media source별 URL 수정 내용을 미리보기와 문서 모델에 반영
+ *
+ * @returns 없음
+ */
+function applySelectedMediaSources() {
+  const editableElement = getEditableElement(linkMenu.elementId)
+
+  if (!editableElement) return
+
+  const mediaSources = linkMenu.mediaSources.map((mediaSource) => ({ ...mediaSource }))
+  const frameDocument = previewFrame.value?.contentDocument
+
+  mediaSources.forEach((mediaSource) => {
+    frameDocument?.querySelector<HTMLElement>(mediaSource.selector)?.setAttribute(mediaSource.attribute, mediaSource.src)
+  })
+
+  if (editableElement.type === 'image') {
+    builderEditor.updateCurrentDocumentElement(linkMenu.elementId, { src: mediaSources[0]?.src || '' })
+    closeLinkMenu()
+    return
+  }
+
+  if (editableElement.type !== 'picture' && editableElement.type !== 'video') return
+
+  builderEditor.updateCurrentDocumentElement(linkMenu.elementId, { mediaSources })
+  closeLinkMenu()
 }
 
 /**
@@ -1028,32 +1157,6 @@ function openSelectedLinkHrefEdit() {
 }
 
 /**
- * 현재 선택된 이미지의 src 입력 모드로 툴바를 전환하고 input에 포커싱
- */
-function openSelectedImageSrcEdit() {
-  const previewElement = getPreviewElement(linkMenu.elementId)
-
-  if (isImageElement(previewElement)) {
-    linkMenu.src = previewElement.getAttribute('src') || ''
-  }
-
-  linkMenu.mode = 'image-src'
-  nextTick(() => {
-    const input = previewWrap.value?.querySelector<HTMLInputElement>('.html-link-edit-popover input')
-    input?.focus()
-    input?.select()
-  })
-}
-
-/**
- * 현재 선택된 이미지의 로컬 파일 선택 창을 실행
- */
-function startSelectedImageEdit() {
-  openImagePicker(linkMenu.elementId)
-  closeLinkMenu()
-}
-
-/**
  * 툴바에서 입력한 링크 주소를 미리보기와 store에 반영
  */
 function applySelectedLinkHref() {
@@ -1073,29 +1176,16 @@ function applySelectedLinkHref() {
 }
 
 /**
- * 툴바에서 입력한 이미지 URL을 미리보기와 store에 반영
- */
-function applySelectedImageSrc() {
-  const previewElement = getPreviewElement(linkMenu.elementId)
-
-  if (isImageElement(previewElement)) {
-    previewElement.src = linkMenu.src
-    previewElement.setAttribute('src', linkMenu.src)
-  }
-
-  builderEditor.updateCurrentDocumentElement(linkMenu.elementId, {
-    src: linkMenu.src
-  })
-  closeLinkMenu()
-}
-
-/**
- * 이미지 파일 선택 input을 열기 위해 선택 이미지 id를 저장
+ * picture/video의 지정 source 파일 업로드 선택 창 열기
  *
- * @param elementId 로컬 이미지로 교체할 파싱 요소 id
+ * @param elementId 편집할 미디어 컨테이너 id
+ * @param mediaSourceSelector 업로드 대상 source 선택자
+ * @returns 없음
  */
-function openImagePicker(elementId: string) {
+function openMediaPicker(elementId: string, mediaSourceSelector: string) {
   selectedImageElementId.value = elementId
+  selectedMediaSourceSelector.value = mediaSourceSelector
+  selectedMediaInputType.value = linkMenu.targetType === 'video' ? 'video' : 'image'
   imageInput.value?.click()
 }
 
@@ -1120,11 +1210,42 @@ function handleImageInputChange(event: Event) {
     const src = typeof reader.result === 'string' ? reader.result : ''
     const imageElement = getPreviewElement(elementId)
 
+    if (selectedMediaSourceSelector.value) {
+      const editableElement = getEditableElement(elementId)
+
+      if (editableElement?.type === 'picture' || editableElement?.type === 'video') {
+        const mediaSources = (editableElement.mediaSources || []).map((mediaSource) => {
+          return mediaSource.selector === selectedMediaSourceSelector.value
+            ? { ...mediaSource, src }
+            : mediaSource
+        })
+        const mediaSource = mediaSources.find((source) => source.selector === selectedMediaSourceSelector.value)
+
+        if (mediaSource) {
+          previewFrame.value?.contentDocument
+            ?.querySelector<HTMLElement>(mediaSource.selector)
+            ?.setAttribute(mediaSource.attribute, src)
+          builderEditor.updateCurrentDocumentElement(elementId, { mediaSources })
+          linkMenu.mediaSources = mediaSources.map((source) => ({ ...source }))
+        }
+
+        selectedMediaSourceSelector.value = ''
+        input.value = ''
+        return
+      }
+    }
+
     if (isImageElement(imageElement)) {
       imageElement.src = src
     }
 
     builderEditor.updateCurrentDocumentElement(elementId, { src })
+    linkMenu.mediaSources = linkMenu.mediaSources.map((mediaSource) => {
+      return mediaSource.selector === selectedMediaSourceSelector.value
+        ? { ...mediaSource, src }
+        : mediaSource
+    })
+    selectedMediaSourceSelector.value = ''
     input.value = ''
   }
 
@@ -1139,7 +1260,42 @@ function closeLinkMenu() {
   linkMenu.mode = 'menu'
   linkMenu.targetType = 'link'
   linkMenu.hasLink = false
-  linkMenu.src = ''
+  linkMenu.href = ''
+  linkMenu.mediaSources = []
+}
+
+/**
+ * 편집 요소 id로 현재 문서의 요소 모델 조회
+ *
+ * @param elementId 조회할 편집 요소 id
+ * @returns 현재 문서의 편집 요소 또는 없으면 null
+ */
+function getEditableElement(elementId: string) {
+  return currentDocument.value?.elements.find((element) => element.id === elementId) || null
+}
+
+/**
+ * img/picture/video의 URL 편집용 source 목록 복제
+ *
+ * @param elementId 조회할 미디어 컨테이너 id
+ * @returns URL 편집에 사용할 source 목록
+ */
+function getMediaSources(elementId: string) {
+  const editableElement = getEditableElement(elementId)
+
+  if (editableElement?.type === 'image') {
+    return [{
+      selector: editableElement.selector,
+      label: 'IMG',
+      attribute: 'src' as const,
+      src: editableElement.src || '',
+      originalSrc: editableElement.originalSrc || ''
+    }]
+  }
+
+  if (editableElement?.type !== 'picture' && editableElement?.type !== 'video') return []
+
+  return (editableElement.mediaSources || []).map((mediaSource) => ({ ...mediaSource }))
 }
 
 /**
@@ -1155,16 +1311,6 @@ function getPreviewElement(elementId: string) {
 }
 
 /**
- * 이미지가 링크 내부에 포함되어 있는지 확인하고 부모 anchor 요소를 반환
- *
- * @param element 링크 부모를 찾을 이미지 요소
- * @returns 이미지와 가장 가까운 부모 anchor 요소 또는 없으면 null
- */
-function getImageLinkElement(element: HTMLImageElement) {
-  return element.closest<HTMLAnchorElement>('a')
-}
-
-/**
  * iframe 내부 요소도 안정적으로 판별할 수 있도록 tagName 기준으로 이미지 여부를 확인
  *
  * @param element 이미지 여부를 확인할 DOM 요소
@@ -1172,6 +1318,18 @@ function getImageLinkElement(element: HTMLImageElement) {
  */
 function isImageElement(element: Element | null): element is HTMLImageElement {
   return Boolean(element && element.tagName.toLowerCase() === 'img')
+}
+
+/**
+ * iframe 내부 요소의 picture/video 미디어 컨테이너 여부 확인
+ *
+ * @param element 미디어 여부를 확인할 DOM 요소
+ * @returns picture 또는 video 태그이면 true
+ */
+function isMediaElement(element: Element | null): element is HTMLPictureElement | HTMLVideoElement {
+  const tagName = element?.tagName.toLowerCase()
+
+  return tagName === 'picture' || tagName === 'video'
 }
 
 /**
@@ -1249,9 +1407,13 @@ function placeCaretAtEnd(element: HTMLElement) {
 function getElementPreview(element: ParsedHtmlEditableElement) {
   const value = element.type === 'image'
     ? element.alt || element.src || '이미지'
+    : element.type === 'picture'
+      ? element.mediaSources?.find((mediaSource) => mediaSource.label === 'IMG fallback')?.src || '반응형 이미지'
+      : element.type === 'video'
+        ? element.mediaSources?.[0]?.src || '비디오'
     : element.type === 'link'
       ? element.href || '링크'
-    : element.content || '텍스트'
+      : element.content || '텍스트'
 
   return value.length > 36 ? `${value.slice(0, 36)}...` : value
 }
@@ -1282,6 +1444,8 @@ function getLayoutNodePreview(layoutNode: ParsedHtmlLayoutNode) {
  */
 function getElementIcon(element: ParsedHtmlEditableElement) {
   if (element.type === 'image') return 'ri-image-line'
+  if (element.type === 'picture') return 'ri-landscape-line'
+  if (element.type === 'video') return 'ri-video-line'
   if (element.type === 'link') return 'ri-link'
 
   return 'ri-text'

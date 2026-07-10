@@ -55,7 +55,7 @@ export function useBuilderEditorState() {
    */
   function updateCurrentDocumentElement(
     elementId: string,
-    patch: Partial<Pick<ParsedHtmlEditableElement, 'content' | 'src' | 'alt' | 'href'>>
+    patch: Partial<Pick<ParsedHtmlEditableElement, 'content' | 'src' | 'alt' | 'href' | 'mediaSources'>>
   ) {
     if (!currentDocument.value) return
 

@@ -771,6 +771,21 @@ const stageSubtitle = computed(() => {
   border-color: rgba(139, 145, 255, 0.62);
 }
 
+.html-media-source-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+
+.html-media-source-field button {
+  width: 100%;
+  height: 36px;
+  min-height: 36px;
+  justify-content: center;
+  border: 1px solid rgba(174, 183, 232, 0.14);
+  background: rgba(255, 255, 255, 0.045);
+}
+
 .html-link-edit-actions {
   display: flex;
   justify-content: flex-end;
