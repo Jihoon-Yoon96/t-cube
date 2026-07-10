@@ -61,6 +61,7 @@ const TEXT_SELECTOR = [
 ].join(',')
 
 const IGNORED_TEXT_PARENT_SELECTOR = 'script, style, noscript, template, svg'
+const TABLE_LAYOUT_TAGS = new Set(['table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th'])
 const LAYOUT_NODE_SELECTOR = [
   'body > header',
   'body > main',
@@ -79,7 +80,14 @@ const LAYOUT_NODE_SELECTOR = [
   'article > section',
   'article > div',
   'ul > li',
-  'ol > li'
+  'ol > li',
+  'table',
+  'thead',
+  'tbody',
+  'tfoot',
+  'tr',
+  'td',
+  'th'
 ].join(',')
 const MAX_TEXT_ELEMENT_COUNT = 80
 const MAX_IMAGE_ELEMENT_COUNT = 40
@@ -456,7 +464,9 @@ function createElementSelector(element: Element) {
  */
 function isMovableLayoutElement(element: HTMLElement) {
   if (!element.parentElement) return false
-  if (element.closest('table, thead, tbody, tfoot, tr, select')) return false
+  const isTableLayoutTag = TABLE_LAYOUT_TAGS.has(element.tagName.toLowerCase())
+
+  if (!isTableLayoutTag && element.closest('table, thead, tbody, tfoot, tr, select')) return false
   if (element.matches('script, style, link, meta, title, template, svg')) return false
   if (element.children.length === 0 && !normalizeText(element.textContent || '')) return false
 
@@ -590,6 +600,11 @@ function injectEditorStyle(document: Document) {
       box-shadow: 0 0 0 4px rgba(101, 108, 255, 0.16) !important;
     }
 
+    [data-tcube-editable-id][data-tcube-hovered="true"] {
+      outline-color: rgba(101, 108, 255, 0.72) !important;
+      box-shadow: 0 0 0 4px rgba(101, 108, 255, 0.16) !important;
+    }
+
     [data-tcube-editable-id][data-tcube-selected="true"] {
       outline-color: #656cff !important;
       box-shadow: 0 0 0 5px rgba(101, 108, 255, 0.2) !important;
@@ -602,6 +617,12 @@ function injectEditorStyle(document: Document) {
 
     [data-tcube-editable-id][contenteditable="true"] {
       cursor: text !important;
+    }
+
+    [data-tcube-layout-id][data-tcube-hovered="true"] {
+      outline: 2px dashed rgba(59, 210, 131, 0.72) !important;
+      outline-offset: 7px !important;
+      box-shadow: 0 0 0 5px rgba(59, 210, 131, 0.12) !important;
     }
 
     [data-tcube-layout-id][data-tcube-layout-selected="true"] {

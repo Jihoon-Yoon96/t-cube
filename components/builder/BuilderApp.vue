@@ -399,6 +399,32 @@ const stageSubtitle = computed(() => {
   font-weight: 800;
 }
 
+.html-inspector-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.html-inspector-collapse-button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(174, 183, 232, 0.14);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text-secondary);
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.html-inspector-collapse-button:hover {
+  border-color: rgba(139, 145, 255, 0.42);
+  background: rgba(139, 145, 255, 0.14);
+  color: #ffffff;
+}
+
 .element-list-panel {
   border-right: 0;
   overflow: hidden;
@@ -561,16 +587,20 @@ const stageSubtitle = computed(() => {
   border-color: rgba(139, 145, 255, 0.34);
 }
 
-.layout-node-toggle,
 .layout-node-toggle-spacer {
-  width: 24px;
-  height: 24px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
 }
 
 .layout-node-toggle {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
   border: 1px solid rgba(174, 183, 232, 0.14);
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.045);
@@ -581,6 +611,27 @@ const stageSubtitle = computed(() => {
 }
 
 .layout-node-toggle:hover {
+  border-color: rgba(139, 145, 255, 0.42);
+  background: rgba(139, 145, 255, 0.14);
+  color: #ffffff;
+}
+
+.layout-node-branch-toggle {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid rgba(174, 183, 232, 0.14);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text-muted);
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.layout-node-branch-toggle:hover {
   border-color: rgba(139, 145, 255, 0.42);
   background: rgba(139, 145, 255, 0.14);
   color: #ffffff;
@@ -598,10 +649,11 @@ const stageSubtitle = computed(() => {
   font-size: 18px;
 }
 
-.layout-node-item span {
+.layout-node-summary {
   min-width: 0;
   display: grid;
   gap: 4px;
+  flex: 1 1 auto;
 }
 
 .layout-node-item strong {

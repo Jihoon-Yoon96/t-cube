@@ -16,7 +16,19 @@
       <aside v-if="showElementList" class="html-editor-panel element-list-panel">
         <div class="html-editor-panel-title">
           <strong>{{ inspectorMode === 'elements' ? '편집 요소' : 'HTML 구조' }}</strong>
-          <span>{{ inspectorMode === 'elements' ? currentDocument.elements.length : currentDocument.layoutNodes.length }}개</span>
+          <div class="html-inspector-title-actions">
+            <button
+              v-if="inspectorMode === 'layout'"
+              class="html-inspector-collapse-button"
+              type="button"
+              :aria-label="areAllLayoutNodesCollapsed ? '하위 요소 전체 펼치기' : '하위 요소 전체 접기'"
+              :title="areAllLayoutNodesCollapsed ? '하위 요소 전체 펼치기' : '하위 요소 전체 접기'"
+              @click="toggleAllLayoutNodes"
+            >
+              <TcubeIcon :icon="areAllLayoutNodesCollapsed ? 'ri-expand-diagonal-2-line' : 'ri-collapse-diagonal-2-line'" />
+            </button>
+            <span>{{ inspectorMode === 'elements' ? currentDocument.elements.length : currentDocument.layoutNodes.length }}개</span>
+          </div>
         </div>
 
         <div class="html-inspector-tabs" role="tablist" aria-label="HTML inspector mode">
@@ -48,6 +60,8 @@
             :class="{ active: builderEditor.selectedElementId === element.id }"
             type="button"
             @click.stop="handleElementListClick(element)"
+            @mouseenter="handleElementListHover(element)"
+            @mouseleave="clearPreviewHover"
           >
             <TcubeIcon :icon="getElementIcon(element)" />
             <span>
@@ -76,6 +90,8 @@
             @dragend="handleLayoutDragEnd"
             @dragover.prevent="handleLayoutDragOver(layoutNode)"
             @drop.prevent="handleLayoutDrop(layoutNode, $event)"
+            @mouseenter="handleLayoutNodeHover(layoutNode)"
+            @mouseleave="clearPreviewHover"
             @keydown.enter.prevent="handleLayoutNodeClick(layoutNode)"
             @keydown.space.prevent="handleLayoutNodeClick(layoutNode)"
           >
@@ -90,10 +106,20 @@
               <TcubeIcon :icon="isLayoutNodeCollapsed(layoutNode) ? 'ri-arrow-right-s-line' : 'ri-arrow-down-s-line'" />
             </button>
             <span v-else class="layout-node-toggle-spacer" />
+            <button
+              v-if="hasLayoutChildren(layoutNode)"
+              class="layout-node-branch-toggle"
+              type="button"
+              :aria-label="areLayoutDescendantsCollapsed(layoutNode) ? '하위 구조 전체 펼치기' : '하위 구조 전체 접기'"
+              :title="areLayoutDescendantsCollapsed(layoutNode) ? '하위 구조 전체 펼치기' : '하위 구조 전체 접기'"
+              @click.stop="toggleLayoutDescendants(layoutNode)"
+            >
+              <TcubeIcon :icon="areLayoutDescendantsCollapsed(layoutNode) ? 'ri-expand-diagonal-2-line' : 'ri-collapse-diagonal-2-line'" />
+            </button>
             <span class="layout-node-drag-icon" aria-hidden="true">
               <TcubeIcon icon="ri-drag-move-2-line" />
             </span>
-            <span>
+            <span class="layout-node-summary">
               <strong>{{ layoutNode.label }}</strong>
               <small>{{ getLayoutNodePreview(layoutNode) }}</small>
             </span>
@@ -240,12 +266,33 @@ const visibleLayoutNodes = computed(() => {
 
   return currentDocument.value.layoutNodes.filter((node) => !hasCollapsedLayoutAncestor(node, collapsedIds, nodeBySelector))
 })
+/** 전체 접기 대상 레이아웃이 모두 접힌 상태 여부 */
+const areAllLayoutNodesCollapsed = computed(() => {
+  const collapsibleLayoutNodeIds = getCollapsibleLayoutNodeIds()
+
+  return collapsibleLayoutNodeIds.length > 0
+    && collapsibleLayoutNodeIds.every((nodeId) => collapsedLayoutNodeIds.value.includes(nodeId))
+})
 const previewFrameWidth = computed(() => {
   if (builderView.activeViewport === 'tablet') return '768px'
   if (builderView.activeViewport === 'mobile') return '390px'
 
   return '100%'
 })
+
+/**
+ * 하위 구조를 가진 레이아웃 노드 전체 접기 또는 펼치기
+ *
+ * @returns 없음
+ */
+function toggleAllLayoutNodes() {
+  if (areAllLayoutNodesCollapsed.value) {
+    collapsedLayoutNodeIds.value = []
+    return
+  }
+
+  collapsedLayoutNodeIds.value = getCollapsibleLayoutNodeIds()
+}
 
 /**
  * iframe 미리보기 로드가 끝난 뒤 편집 가능한 요소에 클릭/키보드 이벤트를 연결
@@ -388,7 +435,7 @@ function syncPreviewSelection() {
 
     if (selectedLayoutElement) {
       selectedLayoutElement.dataset.tcubeLayoutSelected = 'true'
-      selectedLayoutElement.scrollIntoView({ block: 'center', inline: 'center' })
+      selectedLayoutElement.scrollIntoView({ block: 'start', inline: 'nearest' })
     }
   }
 
@@ -423,11 +470,11 @@ function focusSelectedLayoutNodeAfterPreviewRender() {
       if (!selectedLayoutElement) return
 
       selectedLayoutElement.dataset.tcubeLayoutSelected = 'true'
-      selectedLayoutElement.scrollIntoView({ block: 'center', inline: 'center' })
+      selectedLayoutElement.scrollIntoView({ block: 'start', inline: 'nearest' })
 
       const elementRect = selectedLayoutElement.getBoundingClientRect()
       const currentScrollY = frameWindow?.scrollY || frameDocument?.documentElement.scrollTop || 0
-      const targetScrollY = currentScrollY + elementRect.top - ((frameWindow?.innerHeight || 0) / 2) + (elementRect.height / 2)
+      const targetScrollY = currentScrollY + elementRect.top
 
       frameWindow?.scrollTo({
         top: Math.max(0, targetScrollY),
@@ -487,9 +534,63 @@ function startTextEdit(element: HTMLElement) {
 }
 
 /**
- * 좌측 편집 요소 목록에서 항목을 클릭했을 때 해당 미리보기 요소로 이동하고 편집 UI를 실행
+ * 요소 목록 항목 hover 시 iframe 미리보기 요소 강조
+ *
+ * @param element 강조할 파싱 요소 정보
+ * @returns 없음
+ */
+function handleElementListHover(element: ParsedHtmlEditableElement) {
+  setPreviewHover(getPreviewElement(element.id))
+}
+
+/**
+ * 구조 목록 항목 hover 시 iframe 미리보기 레이아웃 강조
+ *
+ * @param layoutNode 강조할 레이아웃 노드 정보
+ * @returns 없음
+ */
+function handleLayoutNodeHover(layoutNode: ParsedHtmlLayoutNode) {
+  const layoutElement = previewFrame.value?.contentDocument?.querySelector<HTMLElement>(
+    `[data-tcube-layout-id="${layoutNode.id}"]`
+  ) || null
+
+  setPreviewHover(layoutElement)
+}
+
+/**
+ * iframe 미리보기 hover 강조 제거
+ *
+ * @returns 없음
+ */
+function clearPreviewHover() {
+  setPreviewHover(null)
+}
+
+/**
+ * iframe 미리보기 요소 hover 강조 상태 동기화
+ *
+ * @param previewElement 강조할 미리보기 요소 또는 null
+ * @returns 없음
+ */
+function setPreviewHover(previewElement: HTMLElement | null) {
+  const frameDocument = previewFrame.value?.contentDocument
+
+  if (!frameDocument) return
+
+  frameDocument.querySelectorAll<HTMLElement>('[data-tcube-hovered]').forEach((element) => {
+    delete element.dataset.tcubeHovered
+  })
+
+  if (previewElement) {
+    previewElement.dataset.tcubeHovered = 'true'
+  }
+}
+
+/**
+ * 좌측 편집 요소 목록에서 항목 클릭 시 해당 미리보기 요소로 이동하고 편집 UI 실행
  *
  * @param element 목록에서 선택된 파싱 요소 정보
+ * @returns 없음
  */
 function handleElementListClick(element: ParsedHtmlEditableElement) {
   builderEditor.selectElement(element.id)
@@ -564,6 +665,91 @@ function isLayoutNodeCollapsed(layoutNode: ParsedHtmlLayoutNode) {
  */
 function hasLayoutChildren(layoutNode: ParsedHtmlLayoutNode) {
   return Boolean(currentDocument.value?.layoutNodes.some((node) => node.parentSelector === layoutNode.selector))
+}
+
+/**
+ * 하위 레이아웃을 가진 노드 id 목록 조회
+ *
+ * @returns 접기 가능한 레이아웃 노드 id 목록
+ */
+function getCollapsibleLayoutNodeIds() {
+  const layoutNodes = currentDocument.value?.layoutNodes || []
+  const parentSelectors = new Set(layoutNodes.map((layoutNode) => layoutNode.parentSelector))
+
+  return layoutNodes
+    .filter((layoutNode) => parentSelectors.has(layoutNode.selector))
+    .map((layoutNode) => layoutNode.id)
+}
+
+/**
+ * 기준 레이아웃의 하위 접기 가능한 노드 id 목록 조회
+ *
+ * @param layoutNode 하위 구조 기준 레이아웃 노드
+ * @returns 하위 접기 가능한 레이아웃 노드 id 목록
+ */
+function getLayoutDescendantCollapsibleNodeIds(layoutNode: ParsedHtmlLayoutNode) {
+  const layoutNodes = currentDocument.value?.layoutNodes || []
+  const nodeBySelector = new Map(layoutNodes.map((node) => [node.selector, node]))
+  const collapsibleNodeIds = new Set(getCollapsibleLayoutNodeIds())
+
+  return layoutNodes
+    .filter((node) => collapsibleNodeIds.has(node.id))
+    .filter((node) => isLayoutNodeDescendantOf(node, layoutNode, nodeBySelector))
+    .map((node) => node.id)
+}
+
+/**
+ * 대상 레이아웃이 기준 레이아웃의 하위 노드인지 확인
+ *
+ * @param layoutNode 확인할 레이아웃 노드
+ * @param ancestorNode 기준이 되는 상위 레이아웃 노드
+ * @param nodeBySelector selector 기준 레이아웃 노드 조회 맵
+ * @returns 기준 레이아웃의 하위 노드이면 true
+ */
+function isLayoutNodeDescendantOf(
+  layoutNode: ParsedHtmlLayoutNode,
+  ancestorNode: ParsedHtmlLayoutNode,
+  nodeBySelector: Map<string, ParsedHtmlLayoutNode>
+) {
+  let parentNode = nodeBySelector.get(layoutNode.parentSelector)
+
+  while (parentNode) {
+    if (parentNode.id === ancestorNode.id) return true
+
+    parentNode = nodeBySelector.get(parentNode.parentSelector)
+  }
+
+  return false
+}
+
+/**
+ * 기준 레이아웃의 하위 접기 가능한 노드가 모두 접힌 상태인지 확인
+ *
+ * @param layoutNode 하위 구조 기준 레이아웃 노드
+ * @returns 하위 접기 가능한 노드가 모두 접혔으면 true
+ */
+function areLayoutDescendantsCollapsed(layoutNode: ParsedHtmlLayoutNode) {
+  const descendantNodeIds = getLayoutDescendantCollapsibleNodeIds(layoutNode)
+
+  return descendantNodeIds.length > 0
+    && descendantNodeIds.every((nodeId) => collapsedLayoutNodeIds.value.includes(nodeId))
+}
+
+/**
+ * 기준 레이아웃의 하위 접기 가능한 노드 전체 접기 또는 펼치기
+ *
+ * @param layoutNode 하위 구조 기준 레이아웃 노드
+ * @returns 없음
+ */
+function toggleLayoutDescendants(layoutNode: ParsedHtmlLayoutNode) {
+  const descendantNodeIds = getLayoutDescendantCollapsibleNodeIds(layoutNode)
+
+  if (areLayoutDescendantsCollapsed(layoutNode)) {
+    collapsedLayoutNodeIds.value = collapsedLayoutNodeIds.value.filter((nodeId) => !descendantNodeIds.includes(nodeId))
+    return
+  }
+
+  collapsedLayoutNodeIds.value = [...new Set([...collapsedLayoutNodeIds.value, ...descendantNodeIds])]
 }
 
 /**
