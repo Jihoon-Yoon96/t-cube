@@ -52,6 +52,11 @@ const TEXT_SELECTOR = [
   'a',
   'button',
   'li',
+  'dt',
+  'dd',
+  'pre',
+  'blockquote',
+  'address',
   'div',
   'td',
   'th',
@@ -60,38 +65,10 @@ const TEXT_SELECTOR = [
   'em'
 ].join(',')
 
-const IGNORED_TEXT_PARENT_SELECTOR = 'script, style, noscript, template, svg'
-const TABLE_LAYOUT_TAGS = new Set(['table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th'])
-const LAYOUT_NODE_SELECTOR = [
-  'body > header',
-  'body > main',
-  'body > footer',
-  'body > nav',
-  'body > section',
-  'body > article',
-  'body > aside',
-  'body > div',
-  'main section',
-  'main article',
-  'main > div',
-  'section > section',
-  'section > article',
-  'section > div',
-  'article > section',
-  'article > div',
-  'ul > li',
-  'ol > li',
-  'table',
-  'thead',
-  'tbody',
-  'tfoot',
-  'tr',
-  'td',
-  'th'
-].join(',')
+const IGNORED_TEXT_PARENT_SELECTOR = 'script, style'
+const STRUCTURE_EXCLUDED_TAGS = new Set(['html', 'head', 'body', 'script', 'style', 'link', 'meta', 'title'])
 const MAX_TEXT_ELEMENT_COUNT = 80
 const MAX_IMAGE_ELEMENT_COUNT = 40
-const MAX_LAYOUT_NODE_COUNT = 120
 
 /**
  * HTML 파일 텍스트 읽기 및 문서 파싱
@@ -378,7 +355,7 @@ function extractImageElements(root: HTMLElement): ParsedHtmlEditableElement[] {
  * @returns ?쒓렇, depth, 遺紐? ?뺣낫瑜??ы븿???덉씠?꾩썐 ?몃뱶 紐⑸줉
  */
 function extractLayoutNodes(root: HTMLElement): ParsedHtmlLayoutNode[] {
-  return Array.from(root.querySelectorAll<HTMLElement>(LAYOUT_NODE_SELECTOR))
+  return Array.from(root.querySelectorAll<HTMLElement>('*'))
     .filter((element) => isMovableLayoutElement(element))
     .map((element, index) => {
       const selector = createElementSelector(element)
@@ -398,7 +375,6 @@ function extractLayoutNodes(root: HTMLElement): ParsedHtmlLayoutNode[] {
         previewText
       }
     })
-    .slice(0, MAX_LAYOUT_NODE_COUNT)
 }
 
 /**
@@ -464,13 +440,8 @@ function createElementSelector(element: Element) {
  */
 function isMovableLayoutElement(element: HTMLElement) {
   if (!element.parentElement) return false
-  const isTableLayoutTag = TABLE_LAYOUT_TAGS.has(element.tagName.toLowerCase())
 
-  if (!isTableLayoutTag && element.closest('table, thead, tbody, tfoot, tr, select')) return false
-  if (element.matches('script, style, link, meta, title, template, svg')) return false
-  if (element.children.length === 0 && !normalizeText(element.textContent || '')) return false
-
-  return true
+  return !STRUCTURE_EXCLUDED_TAGS.has(element.tagName.toLowerCase())
 }
 
 /**
