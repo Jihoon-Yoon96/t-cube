@@ -401,7 +401,7 @@ const stageSubtitle = computed(() => {
 
 .element-list-panel {
   border-right: 0;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .html-inspector-tabs {
@@ -438,11 +438,39 @@ const stageSubtitle = computed(() => {
 }
 
 .html-inspector-list {
+  flex: 1 1 auto;
   min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-color: rgba(139, 145, 255, 0.46) rgba(11, 15, 30, 0.48);
+  scrollbar-width: thin;
+}
+
+.html-inspector-list::-webkit-scrollbar {
+  width: 9px;
+}
+
+.html-inspector-list::-webkit-scrollbar-track {
+  border-left: 1px solid rgba(174, 183, 232, 0.08);
+  background: rgba(11, 15, 30, 0.42);
+}
+
+.html-inspector-list::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(11, 15, 30, 0.72);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(139, 145, 255, 0.72), rgba(59, 210, 131, 0.58));
+}
+
+.html-inspector-list::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(163, 168, 255, 0.9), rgba(91, 229, 158, 0.82));
+}
+
+.element-node-list {
+  padding: 10px;
 }
 
 .element-list-item {
-  width: calc(100% - 20px);
+  width: 100%;
   min-height: 64px;
   display: flex;
   align-items: center;
@@ -451,7 +479,7 @@ const stageSubtitle = computed(() => {
   border-radius: 10px;
   background: transparent;
   color: var(--text-primary);
-  margin: 10px;
+  margin: 0 0 10px;
   padding: 10px;
   font: inherit;
   text-align: left;

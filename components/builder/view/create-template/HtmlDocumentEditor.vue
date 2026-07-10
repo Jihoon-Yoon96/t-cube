@@ -40,21 +40,22 @@
           </button>
         </div>
 
-        <button
-          v-show="inspectorMode === 'elements'"
-          v-for="element in currentDocument.elements"
-          :key="element.id"
-          class="element-list-item"
-          :class="{ active: builderEditor.selectedElementId === element.id }"
-          type="button"
-          @click.stop="handleElementListClick(element)"
-        >
-          <TcubeIcon :icon="getElementIcon(element)" />
-          <span>
-            <strong>{{ element.label }}</strong>
-            <small>{{ getElementPreview(element) }}</small>
-          </span>
-        </button>
+        <div v-show="inspectorMode === 'elements'" class="html-inspector-list element-node-list">
+          <button
+            v-for="element in currentDocument.elements"
+            :key="element.id"
+            class="element-list-item"
+            :class="{ active: builderEditor.selectedElementId === element.id }"
+            type="button"
+            @click.stop="handleElementListClick(element)"
+          >
+            <TcubeIcon :icon="getElementIcon(element)" />
+            <span>
+              <strong>{{ element.label }}</strong>
+              <small>{{ getElementPreview(element) }}</small>
+            </span>
+          </button>
+        </div>
 
         <div v-if="inspectorMode === 'layout'" class="html-inspector-list layout-node-list">
           <div
