@@ -127,6 +127,22 @@ export function parseHtmlDocument(html: string, options: ParseHtmlDocumentOption
   const imageElements = extractImageElements(root)
   const mediaElements = extractMediaElements(root)
   const linkElements = extractLinkElements(root, [...textElements, ...imageElements, ...mediaElements])
+  const elements = [...textElements, ...imageElements, ...mediaElements, ...linkElements]
+
+  // 요소 유형과 관계없이 원본 HTML의 DOM 등장 순서 유지
+  elements.sort((firstElement, secondElement) => {
+    const firstDomElement = document.querySelector(firstElement.selector)
+    const secondDomElement = document.querySelector(secondElement.selector)
+
+    if (!firstDomElement || !secondDomElement) return 0
+
+    const position = firstDomElement.compareDocumentPosition(secondDomElement)
+
+    if (position & Node.DOCUMENT_POSITION_FOLLOWING) return -1
+    if (position & Node.DOCUMENT_POSITION_PRECEDING) return 1
+
+    return 0
+  })
   const layoutNodes = extractLayoutNodes(root)
   const sourceName = options.sourceName || 'HTML 문서'
 
@@ -136,7 +152,7 @@ export function parseHtmlDocument(html: string, options: ParseHtmlDocumentOption
     title: normalizeText(document.title) || sourceName,
     sourceName,
     rawHtml: html,
-    elements: [...textElements, ...imageElements, ...mediaElements, ...linkElements],
+    elements,
     layoutNodes
   }
 }
