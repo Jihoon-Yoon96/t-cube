@@ -255,6 +255,8 @@ const collapsedLayoutNodeIds = ref<string[]>([])
 const selectedImageElementId = ref('')
 const selectedMediaSourceSelector = ref('')
 const selectedMediaInputType = ref<'image' | 'video'>('image')
+let pendingImageMenuElementId = ''
+let suppressPreviewScrollClose = false
 const linkMenu = reactive({
   visible: false,
   mode: 'menu' as 'menu' | 'href' | 'media-src',
@@ -314,8 +316,9 @@ function handlePreviewLoad() {
   if (!frameDocument) return
 
   frameDocument.addEventListener('click', handlePreviewDocumentClick)
+  frameDocument.addEventListener('pointerdown', handlePreviewImagePointerDown, true)
   frameDocument.addEventListener('keydown', handleCloseMenuKeydown)
-  frameDocument.addEventListener('scroll', closeLinkMenu, true)
+  frameDocument.addEventListener('scroll', handlePreviewScroll, true)
 
   frameDocument.querySelectorAll<HTMLElement>('[data-tcube-editable-id]').forEach((element) => {
     element.addEventListener('click', (event) => {
@@ -361,6 +364,65 @@ function handlePreviewLoad() {
 
   syncPreviewSelection()
   focusSelectedLayoutNodeAfterPreviewRender()
+  restorePendingImageMenu()
+}
+
+/**
+ * blur 저장으로 iframe이 교체되기 전에 클릭 대상 이미지 id를 보관
+ *
+ * @param event iframe 문서에서 발생한 pointerdown 이벤트
+ * @returns 없음
+ */
+function handlePreviewImagePointerDown(event: PointerEvent) {
+  const clickedElement = event.target as HTMLElement | null
+  const imageElement = clickedElement?.closest<HTMLImageElement>(
+    'img[data-tcube-editable-id][data-tcube-editable-type="image"]'
+  )
+
+  pendingImageMenuElementId = imageElement?.dataset.tcubeEditableId || ''
+}
+
+/**
+ * 사용자 스크롤에서는 팝업을 닫고 이미지 복원용 스크롤은 유지
+ *
+ * @returns 없음
+ */
+function handlePreviewScroll() {
+  if (suppressPreviewScrollClose) return
+
+  closeLinkMenu()
+}
+
+/**
+ * iframe 재로드로 소실된 이미지 클릭을 새 미리보기 요소 기준으로 복원
+ *
+ * @returns 없음
+ */
+function restorePendingImageMenu() {
+  const elementId = pendingImageMenuElementId
+  pendingImageMenuElementId = ''
+
+  if (!elementId) return
+
+  const previewElement = getPreviewElement(elementId)
+
+  if (!isImageElement(previewElement)) return
+
+  builderEditor.selectElement(elementId)
+  suppressPreviewScrollClose = true
+  previewElement.scrollIntoView({ block: 'center', inline: 'center' })
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      suppressPreviewScrollClose = false
+
+      const restoredPreviewElement = getPreviewElement(elementId)
+
+      if (isImageElement(restoredPreviewElement)) {
+        openImageMenuAtElement(restoredPreviewElement)
+      }
+    })
+  })
 }
 
 /**
@@ -473,7 +535,6 @@ function syncPreviewSelection() {
 
   if (selectedPreviewElement) {
     selectedPreviewElement.dataset.tcubeSelected = 'true'
-    selectedPreviewElement.scrollIntoView({ block: 'center', inline: 'center' })
   }
 }
 
@@ -520,6 +581,8 @@ function focusSelectedLayoutNodeAfterPreviewRender() {
 function startTextEdit(element: HTMLElement) {
   closeLinkMenu()
 
+  const initialContent = element.textContent || ''
+
   element.contentEditable = 'true'
   element.dataset.tcubeEditing = 'true'
   element.focus()
@@ -530,13 +593,14 @@ function startTextEdit(element: HTMLElement) {
    */
   const commitEdit = () => {
     const elementId = element.dataset.tcubeEditableId
+    const nextContent = element.textContent || ''
 
     element.contentEditable = 'false'
     delete element.dataset.tcubeEditing
 
-    if (elementId) {
+    if (elementId && nextContent !== initialContent) {
       builderEditor.updateCurrentDocumentElement(elementId, {
-        content: element.textContent || ''
+        content: nextContent
       })
     }
 
@@ -996,6 +1060,8 @@ function openImageMenu(element: HTMLImageElement, event: MouseEvent) {
 
   if (!elementId) return
 
+  pendingImageMenuElementId = ''
+
   const position = getPopoverPosition(event)
 
   linkMenu.visible = true
@@ -1018,6 +1084,8 @@ function openImageMenuAtElement(element: HTMLImageElement) {
   const linkElement = element.closest<HTMLAnchorElement>('a')
 
   if (!elementId) return
+
+  pendingImageMenuElementId = ''
 
   const position = getPopoverPositionByElement(element)
 
