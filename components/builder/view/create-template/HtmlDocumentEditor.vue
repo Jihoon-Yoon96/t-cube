@@ -156,4 +156,4 @@ function moveDraggedLayoutNode(targetNodeId: string, position: HtmlLayoutMovePos
 }
 </script>
 
-<style src="./html-document-editor/html-document-editor.css"></style>
+<style src="~/assets/styles/html-document-editor.css"></style>
