@@ -716,16 +716,20 @@ function injectEditorStyle(document: Document) {
       cursor: pointer !important;
     }
 
+    html[data-tcube-inspector-mode="layout"] [data-tcube-layout-id][draggable="true"] {
+      cursor: grab !important;
+    }
+
     html[data-tcube-inspector-mode="layout"] [data-tcube-layout-id][data-tcube-hovered="true"] {
       outline: 2px dashed rgba(59, 210, 131, 0.72) !important;
       outline-offset: 7px !important;
-      box-shadow: 0 0 0 5px rgba(59, 210, 131, 0.12) !important;
+      box-shadow: inset 0 0 0 3px rgba(59, 210, 131, 0.72), 0 0 0 5px rgba(59, 210, 131, 0.12) !important;
     }
 
     html[data-tcube-inspector-mode="layout"] [data-tcube-layout-id][data-tcube-layout-selected="true"] {
       outline: 2px dashed rgba(59, 210, 131, 0.9) !important;
       outline-offset: 7px !important;
-      box-shadow: 0 0 0 5px rgba(59, 210, 131, 0.16) !important;
+      box-shadow: inset 0 0 0 3px rgba(59, 210, 131, 0.9), 0 0 0 5px rgba(59, 210, 131, 0.16) !important;
     }
 
     html[data-tcube-inspector-mode="layout"] [data-tcube-layout-drop-allowed="true"] {

@@ -318,6 +318,7 @@ function handlePreviewLoad() {
 
   if (!frameDocument) return
 
+  frameDocument.addEventListener('click', handlePreviewLayoutClick, true)
   frameDocument.addEventListener('click', handlePreviewDocumentClick)
   frameDocument.addEventListener('pointerdown', handlePreviewImagePointerDown, true)
   frameDocument.addEventListener('pointermove', handlePreviewPointerMove)
@@ -393,7 +394,10 @@ function syncPreviewInspectorMode() {
 
   frameDocument.documentElement.dataset.tcubeInspectorMode = inspectorMode.value
   frameDocument.querySelectorAll<HTMLElement>('[data-tcube-layout-id]').forEach((layoutElement) => {
-    layoutElement.draggable = inspectorMode.value === 'layout'
+    const anchorElement = layoutElement.closest<HTMLElement>('a[data-tcube-layout-id]')
+    const isAnchorDescendant = Boolean(anchorElement && anchorElement !== layoutElement)
+
+    layoutElement.draggable = inspectorMode.value === 'layout' && !isAnchorDescendant
   })
 
   if (inspectorMode.value !== 'layout') {
@@ -412,9 +416,22 @@ function handlePreviewPointerMove(event: PointerEvent) {
   const targetElement = event.target as HTMLElement | null
   const hoverElement = inspectorMode.value === 'elements'
     ? targetElement?.closest<HTMLElement>('[data-tcube-editable-id]') || null
-    : targetElement?.closest<HTMLElement>('[data-tcube-layout-id]') || null
+    : resolvePreviewLayoutElement(targetElement)
 
   setPreviewHover(hoverElement)
+}
+
+/**
+ * 링크 내부에서는 anchor를 우선하고 그 외에는 가장 가까운 레이아웃 요소 조회
+ *
+ * @param targetElement iframe 내부 이벤트 대상 요소
+ * @returns 구조 편집 대상으로 사용할 레이아웃 요소 또는 null
+ */
+function resolvePreviewLayoutElement(targetElement: HTMLElement | null) {
+  if (!targetElement) return null
+
+  return targetElement.closest<HTMLElement>('a[data-tcube-layout-id]')
+    || targetElement.closest<HTMLElement>('[data-tcube-layout-id]')
 }
 
 /**
@@ -427,7 +444,7 @@ function handlePreviewLayoutDragStart(event: DragEvent) {
   if (inspectorMode.value !== 'layout') return
 
   const targetElement = event.target as HTMLElement | null
-  const layoutElement = targetElement?.closest<HTMLElement>('[data-tcube-layout-id]')
+  const layoutElement = resolvePreviewLayoutElement(targetElement)
   const layoutNode = currentDocument.value?.layoutNodes.find((node) => {
     return node.id === layoutElement?.dataset.tcubeLayoutId
   })
@@ -511,7 +528,7 @@ function handlePreviewLayoutDragEnd() {
  * @returns 드롭 가능한 레이아웃 요소 또는 null
  */
 function findPreviewLayoutDropTarget(targetElement: HTMLElement | null) {
-  let layoutElement = targetElement?.closest<HTMLElement>('[data-tcube-layout-id]') || null
+  let layoutElement = resolvePreviewLayoutElement(targetElement)
 
   while (layoutElement) {
     const layoutNode = currentDocument.value?.layoutNodes.find((node) => {
@@ -652,6 +669,22 @@ function restorePendingImageMenu() {
 }
 
 /**
+ * 구조 모드 클릭을 편집 요소의 bubble 이벤트보다 먼저 처리
+ *
+ * @param event iframe 문서에서 발생한 click 이벤트
+ * @returns 없음
+ */
+function handlePreviewLayoutClick(event: MouseEvent) {
+  if (inspectorMode.value !== 'layout') return
+
+  const layoutElement = resolvePreviewLayoutElement(event.target as HTMLElement | null)
+
+  event.preventDefault()
+  event.stopImmediatePropagation()
+  selectPreviewLayoutNode(layoutElement)
+}
+
+/**
  * iframe 문서의 빈 영역 또는 편집 요소 클릭을 처리
  * 개별 요소 이벤트가 누락되는 경우에도 이미지/링크 툴바를 열 수 있도록 보정
  *
@@ -711,7 +744,7 @@ function selectPreviewLayoutNode(clickedElement: HTMLElement | null) {
   closeLinkMenu()
   builderEditor.selectElement(null)
 
-  const layoutElement = clickedElement?.closest<HTMLElement>('[data-tcube-layout-id]')
+  const layoutElement = resolvePreviewLayoutElement(clickedElement)
 
   if (!layoutElement?.dataset.tcubeLayoutId) return
 
