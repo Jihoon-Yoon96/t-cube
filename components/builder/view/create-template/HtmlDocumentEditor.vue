@@ -251,7 +251,7 @@ const previewWrap = ref<HTMLElement | null>(null)
 const imageInput = ref<HTMLInputElement | null>(null)
 const elementInspectorList = ref<HTMLElement | null>(null)
 const layoutInspectorList = ref<HTMLElement | null>(null)
-const showElementList = ref(false)
+const showElementList = ref(true)
 const inspectorMode = ref<'elements' | 'layout'>('elements')
 const selectedLayoutNodeId = ref('')
 const draggedLayoutNodeId = ref('')
@@ -261,6 +261,7 @@ const selectedImageElementId = ref('')
 const selectedMediaSourceSelector = ref('')
 const selectedMediaInputType = ref<'image' | 'video'>('image')
 let pendingImageMenuElementId = ''
+let pendingPreviewScrollPosition: { left: number, top: number } | null = null
 let suppressPreviewScrollClose = false
 let hoveredPreviewElement: HTMLElement | null = null
 const linkMenu = reactive({
@@ -385,8 +386,52 @@ function handlePreviewLoad() {
   hoveredPreviewElement = null
   syncPreviewInspectorMode()
   syncPreviewSelection()
-  focusSelectedLayoutNodeAfterPreviewRender()
+  if (!restorePendingPreviewScrollPosition()) {
+    focusSelectedLayoutNodeAfterPreviewRender()
+  }
   restorePendingImageMenu()
+}
+
+/**
+ * iframe 미리보기의 현재 스크롤 좌표 조회
+ *
+ * @returns 현재 가로/세로 스크롤 좌표 또는 조회 불가 시 null
+ */
+function getPreviewScrollPosition(): { left: number, top: number } | null {
+  const frameDocument = previewFrame.value?.contentDocument
+  const frameWindow = previewFrame.value?.contentWindow
+
+  if (!frameDocument || !frameWindow) return null
+
+  return {
+    left: frameWindow.scrollX || frameDocument.documentElement.scrollLeft || frameDocument.body.scrollLeft || 0,
+    top: frameWindow.scrollY || frameDocument.documentElement.scrollTop || frameDocument.body.scrollTop || 0
+  }
+}
+
+/**
+ * iframe 리렌더링 완료 후 저장된 미리보기 스크롤 좌표 복원
+ *
+ * @returns 복원할 좌표 존재 여부
+ */
+function restorePendingPreviewScrollPosition(): boolean {
+  const frameWindow = previewFrame.value?.contentWindow
+  const scrollPosition = pendingPreviewScrollPosition
+
+  if (!frameWindow || !scrollPosition) return false
+
+  pendingPreviewScrollPosition = null
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      frameWindow.scrollTo({
+        left: scrollPosition.left,
+        top: scrollPosition.top,
+        behavior: 'auto'
+      })
+    })
+  })
+
+  return true
 }
 
 /** iframe 문서에 현재 인스펙터 모드를 표시해 모드별 강조 스타일 동기화 */
@@ -817,6 +862,16 @@ function scrollActiveInspectorItemIntoView(mode: 'elements' | 'layout') {
 
     const listRect = inspectorList.getBoundingClientRect()
     const itemRect = activeItem.getBoundingClientRect()
+
+    if (mode === 'layout') {
+      const itemCenterOffset = itemRect.top - listRect.top + (itemRect.height / 2)
+      const targetScrollTop = inspectorList.scrollTop + itemCenterOffset - (inspectorList.clientHeight / 2)
+
+      // 바깥 화면은 유지하고 구조 목록 자체만 선택 항목의 중앙 위치로 이동
+      inspectorList.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' })
+      return
+    }
+
     const topBoundary = listRect.top + 10
     const bottomBoundary = listRect.bottom - 10
 
@@ -879,7 +934,6 @@ function syncPreviewSelection() {
 
     if (selectedLayoutElement) {
       selectedLayoutElement.dataset.tcubeLayoutSelected = 'true'
-      selectedLayoutElement.scrollIntoView({ block: 'start', inline: 'nearest' })
     }
 
     return
@@ -1101,6 +1155,7 @@ function handleLayoutNodeClick(layoutNode: ParsedHtmlLayoutNode) {
   builderEditor.selectElement(null)
   closeLinkMenu()
   syncPreviewSelection()
+  scrollActiveInspectorItemIntoView('layout')
 }
 
 /**
@@ -1302,6 +1357,7 @@ function moveDraggedLayoutNode(targetNodeId: string, position: 'before' | 'after
 
   if (!draggedLayoutNodeId.value || !targetNode || !canDropLayoutNode(targetNode)) return
 
+  pendingPreviewScrollPosition = getPreviewScrollPosition()
   const movedLayoutNodeId = builderEditor.moveCurrentDocumentLayoutNode(
     draggedLayoutNodeId.value,
     targetNodeId,
@@ -1312,16 +1368,17 @@ function moveDraggedLayoutNode(targetNodeId: string, position: 'before' | 'after
 
   if (movedLayoutNodeId) {
     selectedLayoutNodeId.value = movedLayoutNodeId
-    pendingLayoutFocusId.value = movedLayoutNodeId
     collapsedLayoutNodeIds.value = collapsedLayoutNodeIds.value.filter((nodeId) => {
       return currentDocument.value?.layoutNodes.some((node) => node.id === nodeId)
     })
     closeLinkMenu()
     nextTick(() => {
       syncPreviewSelection()
-      focusSelectedLayoutNodeAfterPreviewRender()
     })
+    return
   }
+
+  pendingPreviewScrollPosition = null
 }
 
 /**
