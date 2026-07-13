@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title description">
+  <title id="title">HTML 구조 drag and drop 처리 흐름</title>
+  <desc id="description">Inspector 또는 iframe의 drag and drop 요청이 HTML 서비스의 이동과 재파싱을 거쳐 Preview에 반영되는 흐름</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+    </marker>
+    <style>
+      .node { fill: #eef2ff; stroke: #6366f1; stroke-width: 2; }
+      .state { fill: #f0fdf4; stroke: #16a34a; stroke-width: 2; }
+      .service { fill: #ecfeff; stroke: #0891b2; stroke-width: 2; }
+      .label { fill: #111827; font: 600 17px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-anchor: middle; }
+      .detail { fill: #374151; font: 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-anchor: middle; }
+      .edge { fill: none; stroke: #6366f1; stroke-width: 2; marker-end: url(#arrow); }
+      .edge-label { fill: #4b5563; font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <rect class="node" x="45" y="55" width="265" height="94" rx="14" />
+  <text class="label" x="177" y="90">Inspector 또는 iframe</text>
+  <text class="detail" x="177" y="118">drag 시작 · drop 요청</text>
+
+  <rect class="node" x="465" y="55" width="265" height="94" rx="14" />
+  <text class="label" x="597" y="90">HtmlEditorPreview</text>
+  <text class="detail" x="597" y="118">형제 여부 검증 · scroll 저장</text>
+
+  <rect class="state" x="885" y="55" width="270" height="94" rx="14" />
+  <text class="label" x="1020" y="90">Builder editor store</text>
+  <text class="detail" x="1020" y="118">moveCurrentDocumentLayoutNode</text>
+
+  <path class="edge" d="M 310 102 L 465 102" />
+  <path class="edge" d="M 730 102 L 885 102" />
+
+  <rect class="service" x="885" y="260" width="270" height="94" rx="14" />
+  <text class="label" x="1020" y="295">moveHtmlLayoutNode</text>
+  <text class="detail" x="1020" y="323">DOM 이동 · HTML 직렬화</text>
+
+  <rect class="service" x="465" y="260" width="265" height="94" rx="14" />
+  <text class="label" x="597" y="295">parseHtmlDocument</text>
+  <text class="detail" x="597" y="323">요소와 구조 ID 재생성</text>
+
+  <rect class="state" x="45" y="260" width="265" height="94" rx="14" />
+  <text class="label" x="177" y="295">새 ParsedHtmlDocument</text>
+  <text class="detail" x="177" y="323">store 문서 교체 · dirty 설정</text>
+
+  <path class="edge" d="M 1020 149 L 1020 260" />
+  <path class="edge" d="M 885 307 L 730 307" />
+  <path class="edge" d="M 465 307 L 310 307" />
+
+  <rect class="node" x="300" y="415" width="600" height="76" rx="14" />
+  <text class="label" x="600" y="447">HtmlEditorPreview 재렌더링</text>
+  <text class="detail" x="600" y="474">iframe scroll 복원 · 이동 노드 재선택</text>
+
+  <path class="edge" d="M 177 354 L 177 453 L 300 453" />
+</svg>

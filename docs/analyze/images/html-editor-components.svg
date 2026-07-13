@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title description">
+  <title id="title">HTML 편집기 컴포넌트와 서비스 관계</title>
+  <desc id="description">HtmlDocumentEditor를 중심으로 Inspector, Preview, Store, 편집 composable, 팝오버와 HTML 서비스의 연결 관계</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+    </marker>
+    <style>
+      .node { fill: #eef2ff; stroke: #6366f1; stroke-width: 2; }
+      .service { fill: #ecfeff; stroke: #0891b2; stroke-width: 2; }
+      .state { fill: #f0fdf4; stroke: #16a34a; stroke-width: 2; }
+      .label { fill: #111827; font: 600 18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-anchor: middle; }
+      .detail { fill: #374151; font: 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-anchor: middle; }
+      .edge { fill: none; stroke: #6366f1; stroke-width: 2; marker-end: url(#arrow); }
+      .both { fill: none; stroke: #6366f1; stroke-width: 2; marker-start: url(#arrow); marker-end: url(#arrow); }
+      .edge-label { fill: #4b5563; font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <rect class="state" x="45" y="90" width="270" height="94" rx="14" />
+  <text class="label" x="180" y="125">Builder editor store</text>
+  <text class="detail" x="180" y="153">문서 · 요소 선택 · dirty</text>
+
+  <rect class="service" x="45" y="315" width="270" height="94" rx="14" />
+  <text class="label" x="180" y="350">parseHtmlDocument</text>
+  <text class="detail" x="180" y="378">render · move · parse</text>
+
+  <rect class="service" x="45" y="540" width="270" height="94" rx="14" />
+  <text class="label" x="180" y="575">htmlLayoutTree</text>
+  <text class="detail" x="180" y="603">구조 트리 순수 계산</text>
+
+  <rect class="node" x="455" y="55" width="300" height="94" rx="14" />
+  <text class="label" x="605" y="90">HtmlDocumentEditor</text>
+  <text class="detail" x="605" y="118">화면 상태와 이벤트 조정</text>
+
+  <rect class="node" x="455" y="250" width="300" height="94" rx="14" />
+  <text class="label" x="605" y="285">HtmlEditorInspector</text>
+  <text class="detail" x="605" y="313">요소 목록 · 구조 트리</text>
+
+  <rect class="node" x="455" y="470" width="300" height="94" rx="14" />
+  <text class="label" x="605" y="505">HtmlEditorPreview</text>
+  <text class="detail" x="605" y="533">iframe 수명주기 · 구조 편집</text>
+
+  <rect class="node" x="875" y="285" width="280" height="94" rx="14" />
+  <text class="label" x="1015" y="320">useHtmlElementEditing</text>
+  <text class="detail" x="1015" y="348">요소 선택 · 값 편집</text>
+
+  <rect class="node" x="875" y="535" width="280" height="94" rx="14" />
+  <text class="label" x="1015" y="570">HtmlElementEditPopover</text>
+  <text class="detail" x="1015" y="598">링크 · 미디어 입력 UI</text>
+
+  <path class="both" d="M 315 115 C 370 95, 400 92, 455 98" />
+  <text class="edge-label" x="385" y="82">문서 / 선택 상태</text>
+
+  <path class="both" d="M 555 149 L 555 250" />
+  <text class="edge-label" x="507" y="204">props · emit</text>
+
+  <path class="both" d="M 655 149 L 655 470" />
+  <text class="edge-label" x="707" y="210">v-model · 공개 API</text>
+
+  <path class="edge" d="M 755 510 C 815 480, 825 380, 875 345" />
+  <text class="edge-label" x="825" y="435">편집 조합</text>
+
+  <path class="both" d="M 875 315 C 680 210, 500 185, 315 155" />
+  <text class="edge-label" x="620" y="203">선택 · 문서 변경</text>
+
+  <path class="edge" d="M 755 535 C 815 550, 830 575, 875 582" />
+  <text class="edge-label" x="815" y="598">팝오버 상태</text>
+
+  <path class="edge" d="M 455 315 C 380 380, 365 535, 315 570" />
+  <text class="edge-label" x="355" y="470">계층 계산</text>
+
+  <path class="both" d="M 180 184 L 180 315" />
+  <text class="edge-label" x="245" y="255">parse / move</text>
+
+  <path class="edge" d="M 455 515 C 390 490, 345 420, 315 382" />
+  <text class="edge-label" x="382" y="462">iframe HTML 생성</text>
+</svg>
