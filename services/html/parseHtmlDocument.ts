@@ -687,43 +687,42 @@ function injectEditorStyle(document: Document) {
   const style = document.createElement('style')
 
   style.textContent = `
-    [data-tcube-editable-id] {
+    html[data-tcube-inspector-mode="elements"] [data-tcube-editable-id] {
       outline: 2px solid transparent !important;
       outline-offset: 3px !important;
       transition: outline-color 120ms ease, box-shadow 120ms ease !important;
     }
 
-    [data-tcube-editable-id]:hover {
+    html[data-tcube-inspector-mode="elements"] [data-tcube-editable-id][data-tcube-hovered="true"] {
       outline-color: rgba(101, 108, 255, 0.72) !important;
       box-shadow: 0 0 0 4px rgba(101, 108, 255, 0.16) !important;
     }
 
-    [data-tcube-editable-id][data-tcube-hovered="true"] {
-      outline-color: rgba(101, 108, 255, 0.72) !important;
-      box-shadow: 0 0 0 4px rgba(101, 108, 255, 0.16) !important;
-    }
-
-    [data-tcube-editable-id][data-tcube-selected="true"] {
+    html[data-tcube-inspector-mode="elements"] [data-tcube-editable-id][data-tcube-selected="true"] {
       outline-color: #656cff !important;
       box-shadow: 0 0 0 5px rgba(101, 108, 255, 0.2) !important;
     }
 
-    [data-tcube-editable-id][data-tcube-editing="true"] {
+    html[data-tcube-inspector-mode="elements"] [data-tcube-editable-id][data-tcube-editing="true"] {
       outline-color: #8b91ff !important;
       box-shadow: 0 0 0 5px rgba(139, 145, 255, 0.28) !important;
     }
 
-    [data-tcube-editable-id][contenteditable="true"] {
+    html[data-tcube-inspector-mode="elements"] [data-tcube-editable-id][contenteditable="true"] {
       cursor: text !important;
     }
 
-    [data-tcube-layout-id][data-tcube-hovered="true"] {
+    html[data-tcube-inspector-mode="layout"] [data-tcube-layout-id] {
+      cursor: pointer !important;
+    }
+
+    html[data-tcube-inspector-mode="layout"] [data-tcube-layout-id][data-tcube-hovered="true"] {
       outline: 2px dashed rgba(59, 210, 131, 0.72) !important;
       outline-offset: 7px !important;
       box-shadow: 0 0 0 5px rgba(59, 210, 131, 0.12) !important;
     }
 
-    [data-tcube-layout-id][data-tcube-layout-selected="true"] {
+    html[data-tcube-inspector-mode="layout"] [data-tcube-layout-id][data-tcube-layout-selected="true"] {
       outline: 2px dashed rgba(59, 210, 131, 0.9) !important;
       outline-offset: 7px !important;
       box-shadow: 0 0 0 5px rgba(59, 210, 131, 0.16) !important;

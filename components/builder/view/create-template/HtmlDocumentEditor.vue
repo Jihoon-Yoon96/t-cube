@@ -52,7 +52,7 @@
           </button>
         </div>
 
-        <div v-show="inspectorMode === 'elements'" class="html-inspector-list element-node-list">
+        <div ref="elementInspectorList" v-show="inspectorMode === 'elements'" class="html-inspector-list element-node-list">
           <button
             v-for="element in currentDocument.elements"
             :key="element.id"
@@ -71,7 +71,7 @@
           </button>
         </div>
 
-        <div v-if="inspectorMode === 'layout'" class="html-inspector-list layout-node-list">
+        <div ref="layoutInspectorList" v-if="inspectorMode === 'layout'" class="html-inspector-list layout-node-list">
           <div
             v-for="layoutNode in visibleLayoutNodes"
             :key="layoutNode.id"
@@ -246,6 +246,8 @@ const builderView = useBuilderView()
 const previewFrame = ref<HTMLIFrameElement | null>(null)
 const previewWrap = ref<HTMLElement | null>(null)
 const imageInput = ref<HTMLInputElement | null>(null)
+const elementInspectorList = ref<HTMLElement | null>(null)
+const layoutInspectorList = ref<HTMLElement | null>(null)
 const showElementList = ref(false)
 const inspectorMode = ref<'elements' | 'layout'>('elements')
 const selectedLayoutNodeId = ref('')
@@ -257,6 +259,7 @@ const selectedMediaSourceSelector = ref('')
 const selectedMediaInputType = ref<'image' | 'video'>('image')
 let pendingImageMenuElementId = ''
 let suppressPreviewScrollClose = false
+let hoveredPreviewElement: HTMLElement | null = null
 const linkMenu = reactive({
   visible: false,
   mode: 'menu' as 'menu' | 'href' | 'media-src',
@@ -317,8 +320,10 @@ function handlePreviewLoad() {
 
   frameDocument.addEventListener('click', handlePreviewDocumentClick)
   frameDocument.addEventListener('pointerdown', handlePreviewImagePointerDown, true)
+  frameDocument.addEventListener('pointermove', handlePreviewPointerMove)
   frameDocument.addEventListener('keydown', handleCloseMenuKeydown)
   frameDocument.addEventListener('scroll', handlePreviewScroll, true)
+  frameDocument.documentElement.addEventListener('pointerleave', clearPreviewHover)
 
   frameDocument.querySelectorAll<HTMLElement>('[data-tcube-editable-id]').forEach((element) => {
     element.addEventListener('click', (event) => {
@@ -326,6 +331,12 @@ function handlePreviewLoad() {
       event.stopPropagation()
 
       const clickedElement = event.target instanceof HTMLElement ? event.target : element
+
+      if (inspectorMode.value === 'layout') {
+        selectPreviewLayoutNode(clickedElement)
+        return
+      }
+
       const clickedLink = clickedElement.closest<HTMLAnchorElement>('a')
       const elementId = element.dataset.tcubeEditableId
 
@@ -335,7 +346,7 @@ function handlePreviewLoad() {
       }
 
       if (elementId) {
-        builderEditor.selectElement(elementId)
+        selectPreviewEditableElement(elementId)
       }
 
       if (element.dataset.tcubeEditableType === 'text') {
@@ -362,9 +373,35 @@ function handlePreviewLoad() {
     })
   })
 
+  hoveredPreviewElement = null
+  syncPreviewInspectorMode()
   syncPreviewSelection()
   focusSelectedLayoutNodeAfterPreviewRender()
   restorePendingImageMenu()
+}
+
+/** iframe 문서에 현재 인스펙터 모드를 표시해 모드별 강조 스타일 동기화 */
+function syncPreviewInspectorMode() {
+  const frameDocument = previewFrame.value?.contentDocument
+
+  if (!frameDocument) return
+
+  frameDocument.documentElement.dataset.tcubeInspectorMode = inspectorMode.value
+}
+
+/**
+ * iframe 본문 hover 대상을 현재 인스펙터 모드에 맞춰 강조
+ *
+ * @param event iframe 문서에서 발생한 pointermove 이벤트
+ * @returns 없음
+ */
+function handlePreviewPointerMove(event: PointerEvent) {
+  const targetElement = event.target as HTMLElement | null
+  const hoverElement = inspectorMode.value === 'elements'
+    ? targetElement?.closest<HTMLElement>('[data-tcube-editable-id]') || null
+    : targetElement?.closest<HTMLElement>('[data-tcube-layout-id]') || null
+
+  setPreviewHover(hoverElement)
 }
 
 /**
@@ -374,6 +411,11 @@ function handlePreviewLoad() {
  * @returns 없음
  */
 function handlePreviewImagePointerDown(event: PointerEvent) {
+  if (inspectorMode.value !== 'elements') {
+    pendingImageMenuElementId = ''
+    return
+  }
+
   const clickedElement = event.target as HTMLElement | null
   const imageElement = clickedElement?.closest<HTMLImageElement>(
     'img[data-tcube-editable-id][data-tcube-editable-type="image"]'
@@ -421,14 +463,16 @@ function restorePendingImageMenu() {
   const elementId = pendingImageMenuElementId
   pendingImageMenuElementId = ''
 
-  if (!elementId) return
+  if (!elementId || inspectorMode.value !== 'elements') return
 
   const previewElement = getPreviewElement(elementId)
 
   if (!isImageElement(previewElement)) return
 
-  builderEditor.selectElement(elementId)
+  selectPreviewEditableElement(elementId)
   scrollPreviewElementIntoView(previewElement, () => {
+    if (inspectorMode.value !== 'elements') return
+
     const restoredPreviewElement = getPreviewElement(elementId)
 
     if (isImageElement(restoredPreviewElement)) {
@@ -444,7 +488,15 @@ function restorePendingImageMenu() {
  * @param event iframe 문서에서 발생한 click 이벤트
  */
 function handlePreviewDocumentClick(event: MouseEvent) {
-  const clickedElement = event.target instanceof HTMLElement ? event.target : null
+  const clickedElement = event.target as HTMLElement | null
+
+  if (inspectorMode.value === 'layout') {
+    event.preventDefault()
+    event.stopPropagation()
+    selectPreviewLayoutNode(clickedElement)
+    return
+  }
+
   const editableElement = clickedElement?.closest<HTMLElement>('[data-tcube-editable-id]')
   const clickedLink = clickedElement?.closest<HTMLAnchorElement>('a')
 
@@ -452,7 +504,7 @@ function handlePreviewDocumentClick(event: MouseEvent) {
     event.preventDefault()
     event.stopPropagation()
     if (editableElement.dataset.tcubeEditableId) {
-      builderEditor.selectElement(editableElement.dataset.tcubeEditableId)
+      selectPreviewEditableElement(editableElement.dataset.tcubeEditableId)
     }
     openMediaMenu(editableElement, event)
     return
@@ -469,21 +521,96 @@ function handlePreviewDocumentClick(event: MouseEvent) {
     event.preventDefault()
     event.stopPropagation()
     if (editableElement.dataset.tcubeEditableId) {
-      builderEditor.selectElement(editableElement.dataset.tcubeEditableId)
+      selectPreviewEditableElement(editableElement.dataset.tcubeEditableId)
     }
     openImageMenu(editableElement, event)
     return
   }
 
+  closeLinkMenu()
+}
+
+/**
+ * 구조 모드에서 클릭한 미리보기 위치의 레이아웃 노드만 선택
+ *
+ * @param clickedElement iframe 내부에서 클릭된 요소
+ * @returns 없음
+ */
+function selectPreviewLayoutNode(clickedElement: HTMLElement | null) {
+  pendingImageMenuElementId = ''
+  closeLinkMenu()
+  builderEditor.selectElement(null)
+
   const layoutElement = clickedElement?.closest<HTMLElement>('[data-tcube-layout-id]')
 
-  if (layoutElement?.dataset.tcubeLayoutId) {
-    selectedLayoutNodeId.value = layoutElement.dataset.tcubeLayoutId
-    syncPreviewSelection()
-    return
+  if (!layoutElement?.dataset.tcubeLayoutId) return
+
+  expandLayoutNodeAncestors(layoutElement.dataset.tcubeLayoutId)
+  selectedLayoutNodeId.value = layoutElement.dataset.tcubeLayoutId
+  syncPreviewSelection()
+  scrollActiveInspectorItemIntoView('layout')
+}
+
+/**
+ * 본문에서 클릭한 편집 요소를 선택하고 요소 목록의 활성 항목으로 이동
+ *
+ * @param elementId 선택할 편집 요소 id
+ * @returns 없음
+ */
+function selectPreviewEditableElement(elementId: string) {
+  builderEditor.selectElement(elementId)
+  scrollActiveInspectorItemIntoView('elements')
+}
+
+/**
+ * 선택한 구조 노드가 목록에 나타나도록 접힌 조상 노드 펼침
+ *
+ * @param layoutNodeId 표시할 구조 노드 id
+ * @returns 없음
+ */
+function expandLayoutNodeAncestors(layoutNodeId: string) {
+  const layoutNodes = currentDocument.value?.layoutNodes || []
+  const selectedNode = layoutNodes.find((layoutNode) => layoutNode.id === layoutNodeId)
+
+  if (!selectedNode) return
+
+  const nodeBySelector = new Map(layoutNodes.map((layoutNode) => [layoutNode.selector, layoutNode]))
+  const ancestorIds = new Set<string>()
+  let parentNode = nodeBySelector.get(selectedNode.parentSelector)
+
+  while (parentNode && !ancestorIds.has(parentNode.id)) {
+    ancestorIds.add(parentNode.id)
+    parentNode = nodeBySelector.get(parentNode.parentSelector)
   }
 
-  closeLinkMenu()
+  collapsedLayoutNodeIds.value = collapsedLayoutNodeIds.value.filter((nodeId) => !ancestorIds.has(nodeId))
+}
+
+/**
+ * 현재 활성 인스펙터 항목이 목록 가시 영역 안에 오도록 내부 스크롤 조정
+ *
+ * @param mode 스크롤할 인스펙터 모드
+ * @returns 없음
+ */
+function scrollActiveInspectorItemIntoView(mode: 'elements' | 'layout') {
+  nextTick(() => {
+    const inspectorList = mode === 'elements' ? elementInspectorList.value : layoutInspectorList.value
+    const activeSelector = mode === 'elements' ? '.element-list-item.active' : '.layout-node-item.active'
+    const activeItem = inspectorList?.querySelector<HTMLElement>(activeSelector)
+
+    if (!inspectorList || !activeItem) return
+
+    const listRect = inspectorList.getBoundingClientRect()
+    const itemRect = activeItem.getBoundingClientRect()
+    const topBoundary = listRect.top + 10
+    const bottomBoundary = listRect.bottom - 10
+
+    if (itemRect.top < topBoundary) {
+      inspectorList.scrollBy({ top: itemRect.top - topBoundary, behavior: 'smooth' })
+    } else if (itemRect.bottom > bottomBoundary) {
+      inspectorList.scrollBy({ top: itemRect.bottom - bottomBoundary, behavior: 'smooth' })
+    }
+  })
 }
 
 /**
@@ -528,7 +655,9 @@ function syncPreviewSelection() {
     delete element.dataset.tcubeLayoutSelected
   })
 
-  if (selectedLayoutNodeId.value) {
+  if (inspectorMode.value === 'layout') {
+    if (!selectedLayoutNodeId.value) return
+
     const selectedLayoutElement = frameDocument.querySelector<HTMLElement>(
       `[data-tcube-layout-id="${selectedLayoutNodeId.value}"]`
     )
@@ -537,6 +666,8 @@ function syncPreviewSelection() {
       selectedLayoutElement.dataset.tcubeLayoutSelected = 'true'
       selectedLayoutElement.scrollIntoView({ block: 'start', inline: 'nearest' })
     }
+
+    return
   }
 
   if (!builderEditor.selectedElementId) return
@@ -642,6 +773,8 @@ function startTextEdit(element: HTMLElement) {
  * @returns 없음
  */
 function handleElementListHover(element: ParsedHtmlEditableElement) {
+  if (inspectorMode.value !== 'elements') return
+
   setPreviewHover(getPreviewElement(element.id))
 }
 
@@ -652,6 +785,8 @@ function handleElementListHover(element: ParsedHtmlEditableElement) {
  * @returns 없음
  */
 function handleLayoutNodeHover(layoutNode: ParsedHtmlLayoutNode) {
+  if (inspectorMode.value !== 'layout') return
+
   const layoutElement = previewFrame.value?.contentDocument?.querySelector<HTMLElement>(
     `[data-tcube-layout-id="${layoutNode.id}"]`
   ) || null
@@ -678,10 +813,13 @@ function setPreviewHover(previewElement: HTMLElement | null) {
   const frameDocument = previewFrame.value?.contentDocument
 
   if (!frameDocument) return
+  if (hoveredPreviewElement === previewElement) return
 
   frameDocument.querySelectorAll<HTMLElement>('[data-tcube-hovered]').forEach((element) => {
     delete element.dataset.tcubeHovered
   })
+
+  hoveredPreviewElement = previewElement
 
   if (previewElement) {
     previewElement.dataset.tcubeHovered = 'true'
@@ -695,6 +833,8 @@ function setPreviewHover(previewElement: HTMLElement | null) {
  * @returns 없음
  */
 function handleElementListClick(element: ParsedHtmlEditableElement) {
+  if (inspectorMode.value !== 'elements') return
+
   builderEditor.selectElement(element.id)
   selectedLayoutNodeId.value = ''
   closeLinkMenu()
@@ -704,6 +844,8 @@ function handleElementListClick(element: ParsedHtmlEditableElement) {
   if (!previewElement) return
 
   scrollPreviewElementIntoView(previewElement, () => {
+    if (inspectorMode.value !== 'elements') return
+
     const scrolledPreviewElement = getPreviewElement(element.id)
 
     if (!scrolledPreviewElement) return
@@ -738,6 +880,8 @@ function handleElementListClick(element: ParsedHtmlEditableElement) {
  * @param layoutNode 선택할 레이아웃 노드
  */
 function handleLayoutNodeClick(layoutNode: ParsedHtmlLayoutNode) {
+  if (inspectorMode.value !== 'layout') return
+
   selectedLayoutNodeId.value = layoutNode.id
   builderEditor.selectElement(null)
   closeLinkMenu()
@@ -1030,7 +1174,21 @@ function openAnchorToolbar(anchorElement: HTMLAnchorElement, clickedElement: HTM
     || anchorElement.querySelector<HTMLImageElement>('img[data-tcube-editable-id]')
 
   if (imageElement) {
+    if (imageElement.dataset.tcubeEditableId) {
+      selectPreviewEditableElement(imageElement.dataset.tcubeEditableId)
+    }
     openImageMenu(imageElement, event)
+    return
+  }
+
+  const mediaElement = clickedElement.closest<HTMLElement>('[data-tcube-editable-type="picture"], [data-tcube-editable-type="video"]')
+    || anchorElement.querySelector<HTMLElement>('[data-tcube-editable-type="picture"], [data-tcube-editable-type="video"]')
+
+  if (isMediaElement(mediaElement)) {
+    if (mediaElement.dataset.tcubeEditableId) {
+      selectPreviewEditableElement(mediaElement.dataset.tcubeEditableId)
+    }
+    openMediaMenu(mediaElement, event)
     return
   }
 
@@ -1038,7 +1196,7 @@ function openAnchorToolbar(anchorElement: HTMLAnchorElement, clickedElement: HTM
   const elementId = anchorElement.dataset.tcubeEditableId
 
   if (elementId) {
-    builderEditor.selectElement(elementId)
+    selectPreviewEditableElement(elementId)
     openLinkMenu(anchorElement, event, targetType)
   }
 }
@@ -1558,6 +1716,22 @@ function isSimpleTextAnchor(element: HTMLAnchorElement) {
     return Boolean((child.textContent || '').replace(/\s+/g, ' ').trim())
   })
 }
+
+/** 인스펙터 탭 전환 시 반대 모드의 선택 및 편집 상태 초기화 */
+watch(inspectorMode, (mode) => {
+  pendingImageMenuElementId = ''
+  closeLinkMenu()
+  syncPreviewInspectorMode()
+  clearPreviewHover()
+
+  if (mode === 'layout') {
+    builderEditor.selectElement(null)
+  } else {
+    selectedLayoutNodeId.value = ''
+  }
+
+  syncPreviewSelection()
+})
 
 watch(previewHtml, () => {
   closeLinkMenu()
