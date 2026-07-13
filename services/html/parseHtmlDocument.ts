@@ -687,6 +687,42 @@ function injectEditorStyle(document: Document) {
   const style = document.createElement('style')
 
   style.textContent = `
+    html,
+    body {
+      scrollbar-color: rgba(101, 108, 255, 0.78) rgba(15, 20, 40, 0.08) !important;
+      scrollbar-width: thin !important;
+    }
+
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar {
+      width: 10px !important;
+      height: 10px !important;
+    }
+
+    html::-webkit-scrollbar-track,
+    body::-webkit-scrollbar-track {
+      background: rgba(15, 20, 40, 0.08) !important;
+    }
+
+    html::-webkit-scrollbar-thumb,
+    body::-webkit-scrollbar-thumb {
+      border: 2px solid transparent !important;
+      border-radius: 8px !important;
+      background: rgba(101, 108, 255, 0.78) !important;
+      background-clip: padding-box !important;
+    }
+
+    html::-webkit-scrollbar-thumb:hover,
+    body::-webkit-scrollbar-thumb:hover {
+      background: rgba(78, 86, 232, 0.94) !important;
+      background-clip: padding-box !important;
+    }
+
+    html::-webkit-scrollbar-corner,
+    body::-webkit-scrollbar-corner {
+      background: transparent !important;
+    }
+
     html[data-tcube-inspector-mode="elements"] [data-tcube-editable-id] {
       outline: 2px solid transparent !important;
       outline-offset: 3px !important;
@@ -727,7 +763,7 @@ function injectEditorStyle(document: Document) {
     }
 
     html[data-tcube-inspector-mode="layout"] [data-tcube-layout-id][data-tcube-layout-selected="true"] {
-      outline: 2px dashed rgba(59, 210, 131, 0.9) !important;
+      outline: 3px solid rgba(59, 210, 131, 0.9) !important;
       outline-offset: 7px !important;
       box-shadow: inset 0 0 0 3px rgba(59, 210, 131, 0.9), 0 0 0 5px rgba(59, 210, 131, 0.16) !important;
     }

@@ -71,21 +71,31 @@
           </button>
         </div>
 
-        <div ref="layoutInspectorList" v-if="inspectorMode === 'layout'" class="html-inspector-list layout-node-list">
+        <div
+          ref="layoutInspectorList"
+          v-if="inspectorMode === 'layout'"
+          class="html-inspector-list layout-node-list"
+          :style="{ '--layout-max-indent': visibleLayoutMaxIndent }"
+        >
           <div
             v-for="layoutNode in visibleLayoutNodes"
             :key="layoutNode.id"
             class="layout-node-item"
-            :class="{
+            :class="[{
               active: selectedLayoutNodeId === layoutNode.id,
               dragging: draggedLayoutNodeId === layoutNode.id,
-              droppable: canDropLayoutNode(layoutNode)
-            }"
+              droppable: canDropLayoutNode(layoutNode),
+              'tree-child': layoutNode.depth > 0,
+              'drag-ready': isLayoutNodeDragIconVisible(layoutNode)
+            }, getLayoutNodeActiveRegionClass(layoutNode), getLayoutNodeScopeClasses(layoutNode)]"
             :style="{
-              minWidth: `calc(100% + ${layoutNode.depth * 14}px)`,
-              paddingLeft: `${10 + layoutNode.depth * 14}px`
+              paddingLeft: `${8 + layoutNode.depth * 18}px`,
+              '--layout-node-indent': `${layoutNode.depth * 18}px`,
+              '--layout-tree-width': `${layoutNode.depth * 18}px`,
+              '--layout-branch-left': `${9 + Math.max(0, layoutNode.depth - 1) * 18}px`,
+              '--layout-branch-scope-left': selectedLayoutBranchIndent
             }"
-            draggable="true"
+            :draggable="isLayoutNodeDragIconVisible(layoutNode)"
             role="button"
             tabindex="0"
             @click.stop="handleLayoutNodeClick(layoutNode)"
@@ -98,34 +108,45 @@
             @keydown.enter.prevent="handleLayoutNodeClick(layoutNode)"
             @keydown.space.prevent="handleLayoutNodeClick(layoutNode)"
           >
-            <button
-              v-if="hasLayoutChildren(layoutNode)"
-              class="layout-node-toggle"
-              type="button"
-              :aria-label="isLayoutNodeCollapsed(layoutNode) ? '하위 구조 펼치기' : '하위 구조 접기'"
-              :aria-expanded="!isLayoutNodeCollapsed(layoutNode)"
-              @click.stop="toggleLayoutNode(layoutNode)"
-            >
-              <TcubeIcon :icon="isLayoutNodeCollapsed(layoutNode) ? 'ri-arrow-right-s-line' : 'ri-arrow-down-s-line'" />
-            </button>
-            <span v-else class="layout-node-toggle-spacer" />
-            <button
-              v-if="hasLayoutChildren(layoutNode)"
-              class="layout-node-branch-toggle"
-              type="button"
-              :aria-label="areLayoutDescendantsCollapsed(layoutNode) ? '하위 구조 전체 펼치기' : '하위 구조 전체 접기'"
-              :title="areLayoutDescendantsCollapsed(layoutNode) ? '하위 구조 전체 펼치기' : '하위 구조 전체 접기'"
-              @click.stop="toggleLayoutDescendants(layoutNode)"
-            >
-              <TcubeIcon :icon="areLayoutDescendantsCollapsed(layoutNode) ? 'ri-expand-diagonal-2-line' : 'ri-collapse-diagonal-2-line'" />
-            </button>
-            <span class="layout-node-drag-icon" aria-hidden="true">
-              <TcubeIcon icon="ri-drag-move-2-line" />
-            </span>
-            <span class="layout-node-summary">
-              <strong>{{ layoutNode.label }}</strong>
-              <small>{{ getLayoutNodePreview(layoutNode) }}</small>
-            </span>
+            <span class="layout-node-scope-highlight" aria-hidden="true" />
+            <span class="layout-node-branch-highlight" aria-hidden="true" />
+            <div class="layout-node-card">
+              <span
+                class="layout-node-drag-icon"
+                :class="{ visible: isLayoutNodeDragIconVisible(layoutNode) }"
+                aria-hidden="true"
+              />
+              <button
+                v-if="hasLayoutChildren(layoutNode)"
+                class="layout-node-toggle"
+                type="button"
+                :aria-label="isLayoutNodeCollapsed(layoutNode) ? '하위 구조 펼치기' : '하위 구조 접기'"
+                :aria-expanded="!isLayoutNodeCollapsed(layoutNode)"
+                @click.stop="toggleLayoutNode(layoutNode)"
+              >
+                <TcubeIcon :icon="isLayoutNodeCollapsed(layoutNode) ? 'ri-arrow-right-s-line' : 'ri-arrow-down-s-line'" />
+              </button>
+              <span v-else class="layout-node-toggle-spacer" />
+              <span class="layout-node-summary">
+                <TcubeIcon
+                  v-if="getLayoutNodeIcon(layoutNode)"
+                  class="layout-node-type-icon"
+                  :icon="getLayoutNodeIcon(layoutNode)"
+                />
+                <strong>{{ layoutNode.tagName }}</strong>
+                <small v-if="layoutNode.previewText">{{ getLayoutNodeTextPreview(layoutNode) }}</small>
+              </span>
+              <button
+                v-if="hasLayoutChildren(layoutNode)"
+                class="layout-node-branch-toggle"
+                type="button"
+                :aria-label="areLayoutDescendantsCollapsed(layoutNode) ? '하위 구조 전체 펼치기' : '하위 구조 전체 접기'"
+                :title="areLayoutDescendantsCollapsed(layoutNode) ? '하위 구조 전체 펼치기' : '하위 구조 전체 접기'"
+                @click.stop="toggleLayoutDescendants(layoutNode)"
+              >
+                <TcubeIcon :icon="areLayoutDescendantsCollapsed(layoutNode) ? 'ri-expand-diagonal-2-line' : 'ri-collapse-diagonal-2-line'" />
+              </button>
+            </div>
           </div>
         </div>
       </aside>
@@ -246,6 +267,37 @@ import { renderEditableHtmlDocument } from '~/services/html/parseHtmlDocument'
 
 type LayoutDropAxis = 'horizontal' | 'vertical'
 
+const LAYOUT_NODE_ICONS: Record<string, string> = {
+  a: 'ri-link',
+  button: 'ri-link',
+  div: 'ri-layout-grid-line',
+  h1: 'ri-heading',
+  h2: 'ri-heading',
+  h3: 'ri-heading',
+  h4: 'ri-heading',
+  h5: 'ri-heading',
+  h6: 'ri-heading',
+  header: 'ri-layout-top-line',
+  nav: 'ri-menu-line',
+  main: 'ri-layout-line',
+  section: 'ri-layout-row-line',
+  article: 'ri-article-line',
+  aside: 'ri-layout-right-line',
+  footer: 'ri-layout-bottom-line',
+  figure: 'ri-image-line',
+  figcaption: 'ri-text-caption',
+  img: 'ri-image-line',
+  picture: 'ri-image-line',
+  video: 'ri-video-line',
+  table: 'ri-table-line',
+  span: 'ri-text',
+  p: 'ri-text',
+  pre: 'ri-text',
+  address: 'ri-map-pin-line',
+  details: 'ri-list-check-2',
+  summary: 'ri-file-list-3-line'
+}
+
 const builderEditor = useBuilderEditor()
 const builderView = useBuilderView()
 const previewFrame = ref<HTMLIFrameElement | null>(null)
@@ -287,6 +339,123 @@ const visibleLayoutNodes = computed(() => {
   const nodeBySelector = new Map(currentDocument.value.layoutNodes.map((node) => [node.selector, node]))
 
   return currentDocument.value.layoutNodes.filter((node) => !hasCollapsedLayoutAncestor(node, collapsedIds, nodeBySelector))
+})
+/** 깊은 계층에서도 노드 카드 폭을 유지하기 위한 구조 목록의 최대 들여쓰기 */
+const visibleLayoutMaxIndent = computed(() => {
+  const maxDepth = visibleLayoutNodes.value.reduce((currentMaxDepth, node) => {
+    return Math.max(currentMaxDepth, node.depth)
+  }, 0)
+
+  return `${maxDepth * 18}px`
+})
+/** 선택 레이아웃의 최상위 조상부터 현재 노드까지의 계층 순서 */
+const selectedLayoutHierarchyLevels = computed(() => {
+  const layoutNodes = currentDocument.value?.layoutNodes || []
+  const selectedNode = layoutNodes.find((node) => node.id === selectedLayoutNodeId.value)
+
+  if (!selectedNode) return new Map<string, number>()
+
+  const nodeBySelector = new Map(layoutNodes.map((node) => [node.selector, node]))
+  const hierarchyNodes: ParsedHtmlLayoutNode[] = []
+  const visitedNodeIds = new Set<string>()
+  let currentNode: ParsedHtmlLayoutNode | undefined = selectedNode
+
+  while (currentNode && !visitedNodeIds.has(currentNode.id)) {
+    hierarchyNodes.unshift(currentNode)
+    visitedNodeIds.add(currentNode.id)
+    currentNode = nodeBySelector.get(currentNode.parentSelector)
+  }
+
+  return new Map(hierarchyNodes.map((node, level) => [node.id, level]))
+})
+/** 선택 노드 기준 상위 조상, 직접 부모, 현재 하위 영역 분류 */
+const selectedLayoutActiveRegions = computed(() => {
+  const layoutNodes = currentDocument.value?.layoutNodes || []
+  const selectedNode = layoutNodes.find((node) => node.id === selectedLayoutNodeId.value)
+  const activeRegions = new Map<string, 'ancestor' | 'parent' | 'branch'>()
+
+  if (!selectedNode) return activeRegions
+
+  const nodeBySelector = new Map(layoutNodes.map((node) => [node.selector, node]))
+  const visitedNodeIds = new Set<string>()
+  let parentNode = nodeBySelector.get(selectedNode.parentSelector)
+
+  activeRegions.set(selectedNode.id, 'branch')
+  layoutNodes.forEach((layoutNode) => {
+    if (isLayoutNodeDescendantOf(layoutNode, selectedNode, nodeBySelector)) {
+      activeRegions.set(layoutNode.id, 'branch')
+    }
+  })
+
+  if (parentNode) {
+    activeRegions.set(parentNode.id, 'parent')
+    visitedNodeIds.add(parentNode.id)
+    parentNode = nodeBySelector.get(parentNode.parentSelector)
+  }
+
+  while (parentNode && !visitedNodeIds.has(parentNode.id)) {
+    activeRegions.set(parentNode.id, 'ancestor')
+    visitedNodeIds.add(parentNode.id)
+    parentNode = nodeBySelector.get(parentNode.parentSelector)
+  }
+
+  return activeRegions
+})
+/** 선택 노드가 속한 최상위 조상과 전체 하위 노드 범위 */
+const selectedLayoutScopeNodeIds = computed(() => {
+  const layoutNodes = currentDocument.value?.layoutNodes || []
+  const topmostHierarchyNodeId = selectedLayoutHierarchyLevels.value.keys().next().value as string | undefined
+  const topmostHierarchyNode = layoutNodes.find((node) => node.id === topmostHierarchyNodeId)
+  const scopeNodeIds = new Set<string>()
+
+  if (!topmostHierarchyNode) return scopeNodeIds
+
+  const nodeBySelector = new Map(layoutNodes.map((node) => [node.selector, node]))
+
+  scopeNodeIds.add(topmostHierarchyNode.id)
+  layoutNodes.forEach((layoutNode) => {
+    if (isLayoutNodeDescendantOf(layoutNode, topmostHierarchyNode, nodeBySelector)) {
+      scopeNodeIds.add(layoutNode.id)
+    }
+  })
+
+  return scopeNodeIds
+})
+/** 현재 구조 목록에 노출된 최상위 조상 범위의 시작과 끝 노드 */
+const selectedLayoutScopeBounds = computed(() => {
+  const visibleScopeNodes = visibleLayoutNodes.value.filter((node) => selectedLayoutScopeNodeIds.value.has(node.id))
+
+  return {
+    startNodeId: visibleScopeNodes[0]?.id || '',
+    endNodeId: visibleScopeNodes.at(-1)?.id || ''
+  }
+})
+/** 현재 구조 목록에 노출된 선택 노드와 하위 범위의 시작과 끝 노드 */
+const selectedLayoutBranchBounds = computed(() => {
+  const visibleBranchNodes = visibleLayoutNodes.value.filter((node) => {
+    return selectedLayoutActiveRegions.value.get(node.id) === 'branch'
+  })
+
+  return {
+    startNodeId: visibleBranchNodes[0]?.id || '',
+    endNodeId: visibleBranchNodes.at(-1)?.id || ''
+  }
+})
+/** 선택 노드와 하위 범위 테두리가 시작되는 구조 목록의 왼쪽 위치 */
+const selectedLayoutBranchIndent = computed(() => {
+  const selectedNode = currentDocument.value?.layoutNodes.find((node) => node.id === selectedLayoutNodeId.value)
+
+  return `${8 + (selectedNode?.depth || 0) * 18}px`
+})
+/** 선택 노드 아래에 하나 이상의 하위 레이아웃이 존재하는지 여부 */
+const selectedLayoutHasDescendants = computed(() => {
+  let branchNodeCount = 0
+
+  selectedLayoutActiveRegions.value.forEach((activeRegion) => {
+    if (activeRegion === 'branch') branchNodeCount += 1
+  })
+
+  return branchNodeCount > 1
 })
 /** 전체 접기 대상 레이아웃이 모두 접힌 상태 여부 */
 const areAllLayoutNodesCollapsed = computed(() => {
@@ -932,6 +1101,11 @@ function syncPreviewSelection() {
     delete element.dataset.tcubeLayoutSelected
   })
 
+  frameDocument.querySelectorAll<HTMLElement>('[data-tcube-layout-hierarchy]').forEach((element) => {
+    delete element.dataset.tcubeLayoutHierarchy
+    element.style.removeProperty('--tcube-layout-hierarchy-color')
+  })
+
   if (inspectorMode.value === 'layout') {
     if (!selectedLayoutNodeId.value) return
 
@@ -1161,8 +1335,39 @@ function handleLayoutNodeClick(layoutNode: ParsedHtmlLayoutNode) {
   selectedLayoutNodeId.value = layoutNode.id
   builderEditor.selectElement(null)
   closeLinkMenu()
+  clearPreviewHover()
   syncPreviewSelection()
+  scrollPreviewLayoutNodeIntoView(layoutNode.id)
   scrollActiveInspectorItemIntoView('layout')
+}
+
+/**
+ * 구조 목록에서 선택한 레이아웃 노드를 iframe 미리보기 세로 중앙으로 이동
+ *
+ * @param layoutNodeId 이동할 레이아웃 노드 id
+ * @returns 없음
+ */
+function scrollPreviewLayoutNodeIntoView(layoutNodeId: string) {
+  const frameDocument = previewFrame.value?.contentDocument
+  const frameWindow = previewFrame.value?.contentWindow
+  const layoutElement = frameDocument?.querySelector<HTMLElement>(
+    `[data-tcube-layout-id="${layoutNodeId}"]`
+  )
+
+  if (!frameDocument || !frameWindow || !layoutElement) return
+
+  const elementRect = layoutElement.getBoundingClientRect()
+  const currentScrollTop = frameWindow.scrollY || frameDocument.documentElement.scrollTop || 0
+  const targetScrollTop = currentScrollTop
+    + elementRect.top
+    + (elementRect.height / 2)
+    - (frameWindow.innerHeight / 2)
+
+  frameWindow.scrollTo({
+    top: Math.max(0, targetScrollTop),
+    left: frameWindow.scrollX,
+    behavior: 'smooth'
+  })
 }
 
 /**
@@ -1197,6 +1402,73 @@ function isLayoutNodeCollapsed(layoutNode: ParsedHtmlLayoutNode) {
  */
 function hasLayoutChildren(layoutNode: ParsedHtmlLayoutNode) {
   return Boolean(currentDocument.value?.layoutNodes.some((node) => node.parentSelector === layoutNode.selector))
+}
+
+/**
+ * 선택 레이아웃을 기준으로 구조 카드의 활성 영역 클래스 조회
+ *
+ * @param layoutNode 활성 영역을 확인할 레이아웃 노드
+ * @returns 상위 조상, 직접 부모, 현재 하위 영역에 대응하는 클래스명
+ */
+function getLayoutNodeActiveRegionClass(layoutNode: ParsedHtmlLayoutNode) {
+  const activeRegion = selectedLayoutActiveRegions.value.get(layoutNode.id)
+
+  return activeRegion ? `${activeRegion}-active` : ''
+}
+
+/**
+ * 최상위 조상 전체 범위의 배경과 시작/끝 테두리 클래스 조회
+ *
+ * @param layoutNode 범위 클래스를 확인할 레이아웃 노드
+ * @returns 전체 범위 및 시작/끝 위치 클래스
+ */
+function getLayoutNodeScopeClasses(layoutNode: ParsedHtmlLayoutNode) {
+  const isScopeNode = selectedLayoutScopeNodeIds.value.has(layoutNode.id)
+  const isBranchNode = selectedLayoutHasDescendants.value
+    && selectedLayoutActiveRegions.value.get(layoutNode.id) === 'branch'
+
+  return {
+    'scope-active': isScopeNode,
+    'scope-start': isScopeNode && selectedLayoutScopeBounds.value.startNodeId === layoutNode.id,
+    'scope-end': isScopeNode && selectedLayoutScopeBounds.value.endNodeId === layoutNode.id,
+    'branch-scope-active': isBranchNode,
+    'branch-scope-start': isBranchNode && selectedLayoutBranchBounds.value.startNodeId === layoutNode.id,
+    'branch-scope-end': isBranchNode && selectedLayoutBranchBounds.value.endNodeId === layoutNode.id
+  }
+}
+
+/**
+ * 구조 카드에 표시할 레이아웃 태그 유형 아이콘 조회
+ *
+ * @param layoutNode 아이콘을 조회할 레이아웃 노드
+ * @returns 태그 유형에 대응하는 아이콘명
+ */
+function getLayoutNodeIcon(layoutNode: ParsedHtmlLayoutNode) {
+  return LAYOUT_NODE_ICONS[layoutNode.tagName] || ''
+}
+
+/**
+ * 구조 카드 태그명 옆에 표시할 텍스트 요약 생성
+ *
+ * @param layoutNode 텍스트를 요약할 레이아웃 노드
+ * @returns 공백을 정리하고 최대 28자로 줄인 텍스트
+ */
+function getLayoutNodeTextPreview(layoutNode: ParsedHtmlLayoutNode) {
+  const previewText = layoutNode.previewText.replace(/\s+/g, ' ').trim()
+
+  return previewText.length > 28 ? `${previewText.slice(0, 28)}...` : previewText
+}
+
+/**
+ * 선택 레이아웃과 같은 부모 아래에서 순서를 바꿀 수 있는 노드인지 확인
+ *
+ * @param layoutNode 드래그 아이콘 표시 여부를 확인할 레이아웃 노드
+ * @returns 선택 노드 또는 이동 가능한 형제 노드이면 true
+ */
+function isLayoutNodeDragIconVisible(layoutNode: ParsedHtmlLayoutNode) {
+  const selectedNode = currentDocument.value?.layoutNodes.find((node) => node.id === selectedLayoutNodeId.value)
+
+  return Boolean(selectedNode && selectedNode.parentSelector === layoutNode.parentSelector)
 }
 
 /**
@@ -2016,24 +2288,6 @@ function getElementPreview(element: ParsedHtmlEditableElement) {
       : element.content || '텍스트'
 
   return value.length > 36 ? `${value.slice(0, 36)}...` : value
-}
-
-/**
- * 편집 요소 유형에 맞는 remix icon 클래스를 반환
- *
- * @param element 아이콘을 결정할 파싱 요소 정보
- * @returns 요소 유형에 맞는 아이콘 클래스명
- */
-/**
- * HTML 구조 목록에 표시할 레이아웃 노드 설명 생성
- *
- * @param layoutNode 구조 목록에 표시할 레이아웃 노드
- * @returns 자식 수와 텍스트 일부를 포함한 설명
- */
-function getLayoutNodePreview(layoutNode: ParsedHtmlLayoutNode) {
-  const value = layoutNode.previewText || `${layoutNode.childCount} child`
-
-  return value.length > 42 ? `${value.slice(0, 42)}...` : value
 }
 
 /**
