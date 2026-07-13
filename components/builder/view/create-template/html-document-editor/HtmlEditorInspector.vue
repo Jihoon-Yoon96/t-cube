@@ -318,7 +318,7 @@ function expandLayoutNodeAncestors(layoutNodeId: string) {
 }
 
 /**
- * 현재 활성 인스펙터 항목을 목록 가시 영역으로 이동
+ * 현재 활성 인스펙터 항목을 목록 중앙으로 이동
  *
  * @param mode 스크롤할 인스펙터 모드
  * @returns 없음
@@ -333,23 +333,10 @@ function scrollActiveItemIntoView(mode: HtmlInspectorMode) {
 
     const listRect = inspectorList.getBoundingClientRect()
     const itemRect = activeItem.getBoundingClientRect()
+    const itemCenterOffset = itemRect.top - listRect.top + (itemRect.height / 2)
+    const targetScrollTop = inspectorList.scrollTop + itemCenterOffset - (inspectorList.clientHeight / 2)
 
-    if (mode === 'layout') {
-      const itemCenterOffset = itemRect.top - listRect.top + (itemRect.height / 2)
-      const targetScrollTop = inspectorList.scrollTop + itemCenterOffset - (inspectorList.clientHeight / 2)
-
-      inspectorList.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' })
-      return
-    }
-
-    const topBoundary = listRect.top + 10
-    const bottomBoundary = listRect.bottom - 10
-
-    if (itemRect.top < topBoundary) {
-      inspectorList.scrollBy({ top: itemRect.top - topBoundary, behavior: 'smooth' })
-    } else if (itemRect.bottom > bottomBoundary) {
-      inspectorList.scrollBy({ top: itemRect.bottom - bottomBoundary, behavior: 'smooth' })
-    }
+    inspectorList.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' })
   })
 }
 
