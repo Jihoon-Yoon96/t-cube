@@ -140,8 +140,7 @@ export function useHtmlEditChat() {
 
     const parsedDocument = parseHtmlDocument(response.html, { sourceName })
 
-    builderEditor.setCurrentDocument(parsedDocument)
-    builderEditor.markDirty(true)
+    builderEditor.applyCurrentDocumentEdit(parsedDocument)
   }
 
   /**

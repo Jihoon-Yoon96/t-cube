@@ -1,6 +1,28 @@
 ﻿<template>
   <div class="top-toolbar">
-    <div></div>
+    <div class="history-actions" aria-label="편집 이력">
+      <button
+        class="history-btn"
+        type="button"
+        aria-label="뒤돌리기"
+        title="뒤돌리기"
+        :disabled="!canUndo"
+        @click="emit('undo')"
+      >
+        <TcubeIcon icon="ri-arrow-go-back-line" />
+      </button>
+
+      <button
+        class="history-btn"
+        type="button"
+        aria-label="재실행"
+        title="재실행"
+        :disabled="!canRedo"
+        @click="emit('redo')"
+      >
+        <TcubeIcon icon="ri-arrow-go-forward-line" />
+      </button>
+    </div>
 
     <div class="top-toolbar-icons" aria-label="Viewport">
       <button
@@ -42,6 +64,8 @@ type ViewportMode = 'desktop' | 'tablet' | 'mobile'
 
 defineProps<{
   activeViewport: ViewportMode
+  canUndo: boolean
+  canRedo: boolean
   viewportModes: Array<{
     key: ViewportMode
     label: string
@@ -52,6 +76,8 @@ defineProps<{
 
 const emit = defineEmits<{
   'update:activeViewport': [value: ViewportMode]
+  undo: []
+  redo: []
   download: []
   preview: []
   save: []
@@ -80,6 +106,45 @@ const emit = defineEmits<{
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.05);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+.history-actions {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.history-btn {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(174, 183, 232, 0.14);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.history-btn i {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.history-btn:hover:not(:disabled) {
+  border-color: rgba(139, 145, 255, 0.32);
+  background: rgba(139, 145, 255, 0.12);
+  color: #ffffff;
+}
+
+.history-btn:disabled {
+  color: var(--text-muted);
+  opacity: 0.42;
+  cursor: not-allowed;
 }
 
 .device-btn {
@@ -168,7 +233,8 @@ const emit = defineEmits<{
   }
 
   .top-toolbar-icons,
-  .top-actions {
+  .top-actions,
+  .history-actions {
     justify-self: stretch;
     justify-content: center;
   }

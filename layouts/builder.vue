@@ -21,8 +21,12 @@
           <BuilderTopToolbar
             v-if="showTopToolbar"
             :active-viewport="builderView.activeViewport"
+            :can-undo="builderEditor.canUndo"
+            :can-redo="builderEditor.canRedo"
             :viewport-modes="viewportModes"
             @update:active-viewport="builderView.setActiveViewport"
+            @undo="builderEditor.undoCurrentDocument"
+            @redo="builderEditor.redoCurrentDocument"
             @download="downloadCurrentHtml"
             @preview="openHtmlPreview"
             @save="handleSave"

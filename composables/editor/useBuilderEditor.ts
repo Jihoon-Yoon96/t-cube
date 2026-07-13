@@ -18,10 +18,15 @@ export function useBuilderEditor() {
     selectedElementId: builderStoreRefs.selectedElementId,
     dirty: builderStoreRefs.dirty,
     currentDocument: builderStoreRefs.currentDocument,
+    canUndo: builderStoreRefs.canUndo,
+    canRedo: builderStoreRefs.canRedo,
     selectElement: builderStore.selectElement,
     markDirty: builderStore.markDirty,
     setCurrentDocument: builderStore.setCurrentDocument,
+    applyCurrentDocumentEdit: builderStore.applyCurrentDocumentEdit,
     updateCurrentDocumentElement: builderStore.updateCurrentDocumentElement,
-    moveCurrentDocumentLayoutNode: builderStore.moveCurrentDocumentLayoutNode
+    moveCurrentDocumentLayoutNode: builderStore.moveCurrentDocumentLayoutNode,
+    undoCurrentDocument: builderStore.undoCurrentDocument,
+    redoCurrentDocument: builderStore.redoCurrentDocument
   })
 }
