@@ -394,6 +394,25 @@ function handlePreviewScroll() {
 }
 
 /**
+ * 미리보기 요소를 화면 중앙으로 이동하고 스크롤 이벤트 정리 후 후속 작업 실행
+ *
+ * @param previewElement 이동할 iframe 내부 요소
+ * @param onScrolled 스크롤 완료 후 실행할 작업
+ * @returns 없음
+ */
+function scrollPreviewElementIntoView(previewElement: HTMLElement, onScrolled: () => void) {
+  suppressPreviewScrollClose = true
+  previewElement.scrollIntoView({ block: 'center', inline: 'center' })
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      suppressPreviewScrollClose = false
+      onScrolled()
+    })
+  })
+}
+
+/**
  * iframe 재로드로 소실된 이미지 클릭을 새 미리보기 요소 기준으로 복원
  *
  * @returns 없음
@@ -409,19 +428,12 @@ function restorePendingImageMenu() {
   if (!isImageElement(previewElement)) return
 
   builderEditor.selectElement(elementId)
-  suppressPreviewScrollClose = true
-  previewElement.scrollIntoView({ block: 'center', inline: 'center' })
+  scrollPreviewElementIntoView(previewElement, () => {
+    const restoredPreviewElement = getPreviewElement(elementId)
 
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      suppressPreviewScrollClose = false
-
-      const restoredPreviewElement = getPreviewElement(elementId)
-
-      if (isImageElement(restoredPreviewElement)) {
-        openImageMenuAtElement(restoredPreviewElement)
-      }
-    })
+    if (isImageElement(restoredPreviewElement)) {
+      openImageMenuAtElement(restoredPreviewElement)
+    }
   })
 }
 
@@ -691,29 +703,33 @@ function handleElementListClick(element: ParsedHtmlEditableElement) {
 
   if (!previewElement) return
 
-  previewElement.scrollIntoView({ block: 'center', inline: 'center' })
+  scrollPreviewElementIntoView(previewElement, () => {
+    const scrolledPreviewElement = getPreviewElement(element.id)
 
-  if (element.type === 'image') {
-    if (isImageElement(previewElement)) {
-      openImageMenuAtElement(previewElement)
+    if (!scrolledPreviewElement) return
+
+    if (element.type === 'image') {
+      if (isImageElement(scrolledPreviewElement)) {
+        openImageMenuAtElement(scrolledPreviewElement)
+        return
+      }
+
+      closeLinkMenu()
       return
     }
 
-    closeLinkMenu()
-    return
-  }
+    if ((element.type === 'picture' || element.type === 'video') && isMediaElement(scrolledPreviewElement)) {
+      openMediaMenuAtElement(scrolledPreviewElement)
+      return
+    }
 
-  if ((element.type === 'picture' || element.type === 'video') && isMediaElement(previewElement)) {
-    openMediaMenuAtElement(previewElement)
-    return
-  }
+    if (element.type === 'link' || element.tagName === 'a') {
+      openAnchorToolbarAtElement(scrolledPreviewElement)
+      return
+    }
 
-  if (element.type === 'link' || element.tagName === 'a') {
-    openAnchorToolbarAtElement(previewElement)
-    return
-  }
-
-  startTextEdit(previewElement)
+    startTextEdit(scrolledPreviewElement)
+  })
 }
 
 /**
