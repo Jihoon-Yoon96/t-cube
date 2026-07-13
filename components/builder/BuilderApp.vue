@@ -474,6 +474,7 @@ const stageSubtitle = computed(() => {
 
 .html-inspector-list::-webkit-scrollbar {
   width: 9px;
+  height: 9px;
 }
 
 .html-inspector-list::-webkit-scrollbar-track {
@@ -553,6 +554,7 @@ const stageSubtitle = computed(() => {
 }
 
 .layout-node-list {
+  overflow-x: auto;
   padding: 10px;
 }
 

@@ -81,7 +81,10 @@
               dragging: draggedLayoutNodeId === layoutNode.id,
               droppable: canDropLayoutNode(layoutNode)
             }"
-            :style="{ paddingLeft: `${10 + layoutNode.depth * 14}px` }"
+            :style="{
+              minWidth: `calc(100% + ${layoutNode.depth * 14}px)`,
+              paddingLeft: `${10 + layoutNode.depth * 14}px`
+            }"
             draggable="true"
             role="button"
             tabindex="0"
@@ -394,10 +397,9 @@ function syncPreviewInspectorMode() {
 
   frameDocument.documentElement.dataset.tcubeInspectorMode = inspectorMode.value
   frameDocument.querySelectorAll<HTMLElement>('[data-tcube-layout-id]').forEach((layoutElement) => {
-    const anchorElement = layoutElement.closest<HTMLElement>('a[data-tcube-layout-id]')
-    const isAnchorDescendant = Boolean(anchorElement && anchorElement !== layoutElement)
+    const resolvedLayoutElement = resolvePreviewLayoutElement(layoutElement)
 
-    layoutElement.draggable = inspectorMode.value === 'layout' && !isAnchorDescendant
+    layoutElement.draggable = inspectorMode.value === 'layout' && resolvedLayoutElement === layoutElement
   })
 
   if (inspectorMode.value !== 'layout') {
@@ -422,7 +424,7 @@ function handlePreviewPointerMove(event: PointerEvent) {
 }
 
 /**
- * 링크 내부에서는 anchor를 우선하고 그 외에는 가장 가까운 레이아웃 요소 조회
+ * 링크 내부에서는 anchor를 우선하고 유일한 자식 구조는 형제가 생기는 상위 단위까지 승격
  *
  * @param targetElement iframe 내부 이벤트 대상 요소
  * @returns 구조 편집 대상으로 사용할 레이아웃 요소 또는 null
@@ -430,8 +432,18 @@ function handlePreviewPointerMove(event: PointerEvent) {
 function resolvePreviewLayoutElement(targetElement: HTMLElement | null) {
   if (!targetElement) return null
 
-  return targetElement.closest<HTMLElement>('a[data-tcube-layout-id]')
+  let layoutElement = targetElement.closest<HTMLElement>('a[data-tcube-layout-id]')
     || targetElement.closest<HTMLElement>('[data-tcube-layout-id]')
+
+  while (layoutElement) {
+    const parentElement = layoutElement.parentElement
+
+    if (!parentElement?.dataset.tcubeLayoutId || parentElement.children.length !== 1) break
+
+    layoutElement = parentElement
+  }
+
+  return layoutElement
 }
 
 /**
