@@ -27,7 +27,10 @@
             @save="handleSave"
           />
 
-          <section class="tc-builder-content-body">
+          <section
+            class="tc-builder-content-body"
+            :class="{ 'tc-builder-content-body--fixed': showTopToolbar }"
+          >
             <slot />
           </section>
         </section>

@@ -36,18 +36,20 @@ body {
   --text-muted: #727da8;
   --line: rgba(174, 183, 232, 0.12);
   width: 100%;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   background: var(--page-bg);
   color: var(--text-primary);
+  overflow: hidden;
 }
 
 .tc-builder-shell {
   width: 100%;
-  min-height: 100vh;
+  height: 100%;
   display: grid;
   grid-template-columns: 220px 1fr;
   background: var(--surface);
-  overflow: auto;
+  overflow: hidden;
 }
 
 .tc-builder-mobile-header {
@@ -74,11 +76,15 @@ body {
 }
 
 .tc-builder-main {
+  min-width: 0;
+  min-height: 0;
   background: var(--surface);
+  overflow: hidden;
 }
 
 .tc-builder-main-inner {
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background:
@@ -87,14 +93,53 @@ body {
 }
 
 .tc-builder-content-body {
-  flex: 1;
+  min-height: 0;
+  flex: 1 1 auto;
   padding: 34px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: rgba(139, 145, 255, 0.82) rgba(13, 16, 32, 0.72);
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.tc-builder-content-body--fixed {
+  overflow: hidden;
+  scrollbar-gutter: auto;
+}
+
+.tc-builder-content-body::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.tc-builder-content-body::-webkit-scrollbar-track {
+  border-left: 1px solid rgba(174, 183, 232, 0.08);
+  background: rgba(13, 16, 32, 0.72);
+}
+
+.tc-builder-content-body::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(13, 16, 32, 0.72);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(139, 145, 255, 0.92), rgba(101, 108, 255, 0.78));
+}
+
+.tc-builder-content-body::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #a3a8ff, #777dff);
+}
+
+.tc-builder-content-body::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .tc-builder-sidebar {
+  min-height: 0;
   background: linear-gradient(180deg, var(--sidebar-start) 0%, var(--sidebar-end) 100%);
   color: #ffffff;
   padding: 24px 18px;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .tc-builder-sidebar .tc-builder-brand {
@@ -250,7 +295,8 @@ body {
 
 @media (max-width: 760px) {
   .tc-builder-shell {
-    display: block;
+    grid-template-rows: 72px minmax(0, 1fr);
+    grid-template-columns: 1fr;
   }
 
   .tc-builder-sidebar {
@@ -277,7 +323,8 @@ body {
   }
 
   .tc-builder-main-inner {
-    min-height: auto;
+    height: 100%;
+    min-height: 0;
   }
 
   .tc-builder-content-body {

@@ -302,8 +302,8 @@ const stageSubtitle = computed(() => {
 }
 
 .html-editor-screen {
-  min-height: calc(100vh - 74px);
-  height: calc(100vh - 74px);
+  min-height: 0;
+  height: calc(100% + 34px);
   display: grid;
   grid-template-rows: 1fr;
   margin: -34px;
@@ -1338,6 +1338,12 @@ const stageSubtitle = computed(() => {
 }
 
 @media (max-width: 760px) {
+  .html-editor-screen {
+    height: calc(100% + 22px);
+    margin: -22px;
+    margin-top: 0;
+  }
+
   .creation-start {
     min-height: 420px;
     padding: 28px 18px;
