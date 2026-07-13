@@ -23,6 +23,7 @@
             :active-viewport="builderView.activeViewport"
             :viewport-modes="viewportModes"
             @update:active-viewport="builderView.setActiveViewport"
+            @download="downloadCurrentHtml"
             @preview="openHtmlPreview"
             @save="handleSave"
           />
@@ -56,6 +57,7 @@ import BuilderSidebar from '~/components/layouts/Sidebar/index.vue'
 import BuilderTopToolbar from '~/components/layouts/top-toolbar.vue'
 import { useBuilderEditor } from '~/composables/editor/useBuilderEditor'
 import { useBuilderView } from '~/composables/view/useBuilderView'
+import { renderFinalHtmlDocument } from '~/services/html/parseHtmlDocument'
 import type { BuilderViewportMode } from '~/stores/builder'
 
 const builderView = useBuilderView()
@@ -89,6 +91,41 @@ function openHtmlPreview() {
 /** 전체 화면 미리보기를 닫고 HTML 편집 화면으로 복귀 */
 function closeHtmlPreview() {
   showHtmlPreview.value = false
+}
+
+/** 현재 편집 상태를 최종 HTML 파일로 다운로드 */
+function downloadCurrentHtml() {
+  const currentDocument = builderEditor.currentDocument
+
+  if (!currentDocument) return
+
+  const html = renderFinalHtmlDocument(currentDocument)
+  const blobUrl = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }))
+  const downloadAnchor = document.createElement('a')
+
+  downloadAnchor.href = blobUrl
+  downloadAnchor.download = createHtmlDownloadFileName(currentDocument.sourceName)
+  document.body.appendChild(downloadAnchor)
+  downloadAnchor.click()
+  downloadAnchor.remove()
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 0)
+}
+
+/**
+ * 원본 source 이름을 안전한 HTML 다운로드 파일명으로 변환
+ *
+ * @param sourceName 현재 HTML 문서의 원본 파일명
+ * @returns `.html` 확장자를 가진 다운로드 파일명
+ */
+function createHtmlDownloadFileName(sourceName: string) {
+  const sourceFileName = sourceName.trim().split(/[\\/]/).pop() || 'edited-document'
+  const safeFileName = sourceFileName.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-').trim()
+
+  if (/\.html?$/i.test(safeFileName)) return safeFileName
+
+  const baseName = safeFileName.replace(/\.[^.]+$/, '') || 'edited-document'
+
+  return `${baseName}.html`
 }
 
 /** 현재 HTML 변경 상태를 저장 완료 상태로 전환 */

@@ -19,6 +19,11 @@
     </div>
 
     <div class="top-actions">
+      <button class="toolbar-btn" type="button" @click="emit('download')">
+        <TcubeIcon icon="ri-download-2-line" />
+        <span>다운로드</span>
+      </button>
+
       <button class="toolbar-btn" type="button" @click="emit('preview')">
         <TcubeIcon icon="ri-eye-line" />
         <span>미리보기</span>
@@ -47,6 +52,7 @@ defineProps<{
 
 const emit = defineEmits<{
   'update:activeViewport': [value: ViewportMode]
+  download: []
   preview: []
   save: []
 }>()
@@ -177,4 +183,3 @@ const emit = defineEmits<{
   }
 }
 </style>
-
