@@ -2,27 +2,35 @@
 
 ## 1. 목적
 
-이 문서는 `HtmlDocumentEditor.vue`를 중심으로 HTML 편집 화면의 파일 구조, 상태 소유권, 컴포넌트 통신, iframe 편집 및 구조 이동 프로세스를 설명한다.
+이 문서는 `HtmlDocumentEditor.vue`를 중심으로 HTML 편집 화면의 파일 구조, 상태 소유권, 컴포넌트 통신, iframe 편집, 구조 이동, AI 수정, 편집 이력 및 최종 결과물 출력 프로세스를 설명한다.
 
 HTML 문자열이 편집 가능한 문서 모델로 변환되는 이전 단계는 `docs/analyze/03-html-editable-elements.md`를 참고한다. 이 문서는 `ParsedHtmlDocument`가 store에 저장된 이후부터 사용자가 요소를 선택하고 수정하거나 HTML 구조를 이동하는 과정에 집중한다.
 
 ## 2. 전체 구조
 
 ```txt
+layouts/builder.vue
+├─ components/layouts/top-toolbar.vue
+│  ├─ 뒤돌리기 · 재실행
+│  ├─ 다운로드 · 미리보기 · 저장
+│  └─ PC · Tablet · Mobile
+└─ HtmlDocumentFullPreview.vue      → Teleport 전체 화면 미리보기
+
 HtmlDocumentEditor.vue
 ├─ HtmlEditorInspector.vue
 │  ├─ 요소 탭 목록
 │  └─ 구조 탭 트리와 drag & drop
 ├─ HtmlEditorPreview.vue
-   ├─ iframe 미리보기
-   ├─ useHtmlElementEditing.ts
-   └─ HtmlElementEditPopover.vue
+│  ├─ iframe 미리보기
+│  ├─ useHtmlElementEditing.ts
+│  └─ HtmlElementEditPopover.vue
 └─ HtmlEditorAiChat.vue
    └─ useHtmlEditChat.ts
 
 공유 상태
 └─ useBuilderEditor.ts
    └─ stores/builder/editor.ts
+      └─ currentDocument · undo/redo history
 
 HTML 처리
 ├─ services/html/parseHtmlDocument.ts
@@ -181,7 +189,9 @@ AI HTML 편집 요청과 문서 반영을 조합하는 composable이다.
 `server/services/builder/htmlEditChat.ts`:
 
 - Gemini API 호출
-- 응답 JSON 파싱과 HTML 필드 검증
+- `message`, `html`, `warnings` 구조화 응답 강제
+- 응답 JSON 파싱과 HTML 문서 형태 검증
+- 응답 길이 제한 또는 형식 오류 시 현재 문서 적용 차단
 - 일시적 API 오류에서 fallback 모델 재시도
 
 `server/services/builder/prompts/htmlEditPrompt.ts`:
@@ -236,6 +246,46 @@ DOM이나 Vue 반응성에 의존하지 않는 구조 트리 계산을 담당한
 - 선택, hover, drag, 팝오버 표현
 - 반응형 레이아웃
 
+### 3.12 `stores/builder/editor.ts`
+
+편집 문서와 선택 상태뿐 아니라 뒤돌리기 및 재실행 이력을 관리한다.
+
+주요 책임:
+
+- 문서 변경 직전 상태를 undo history에 저장
+- 뒤돌리기 시 현재 상태를 redo history에 저장하고 이전 상태 복원
+- 재실행 시 현재 상태를 undo history에 저장하고 다음 상태 복원
+- 새 편집이 발생하면 기존 redo history 초기화
+- 새 문서를 업로드하거나 생성하면 이전 문서의 history 초기화
+- 일반 요소 변경, 구조 이동, AI 전체 문서 변경을 같은 이력 단위로 처리
+- 최대 50개 문서 스냅샷 보관
+
+이력 스냅샷에는 `currentDocument`, `selectedElementId`, `dirty`가 포함된다.
+
+### 3.13 toolbar와 최종 결과물 UI
+
+`components/layouts/top-toolbar.vue`:
+
+- 좌측 뒤돌리기 및 재실행 아이콘 버튼
+- 중앙 PC, Tablet, Mobile viewport 선택
+- 우측 다운로드, 미리보기, 저장 버튼
+- `canUndo`, `canRedo`에 따른 이력 버튼 활성 상태 표시
+
+`layouts/builder.vue`:
+
+- toolbar 이벤트와 editor store 연결
+- 현재 HTML 다운로드용 Blob과 파일명 생성
+- 전체 화면 미리보기 표시 상태 관리
+- `Teleport`로 전체 화면 미리보기를 `body` 아래에 렌더링
+
+`HtmlDocumentFullPreview.vue`:
+
+- `renderFinalHtmlDocument()` 결과를 전용 iframe에 표시
+- PC 100%, Tablet 768px, Mobile 390px 너비 전환
+- 닫기 버튼과 Escape 입력 처리
+- 미리보기 중 배경 body 스크롤 잠금
+- 닫을 때 HTML 편집 컴포넌트를 재생성하지 않고 기존 편집 상태 유지
+
 ## 4. 핵심 데이터 모델
 
 ```ts
@@ -265,6 +315,9 @@ type ParsedHtmlDocument = {
 | `currentDocument` | builder editor store | Inspector, Preview, 저장 과정이 공유하는 문서 원본 |
 | `selectedElementId` | builder editor store | 요소 목록과 iframe이 공유하는 선택 상태 |
 | `dirty` | builder editor store | 화면 이동 및 저장 과정에서 사용하는 변경 여부 |
+| undo/redo history | builder editor store | 요소, 구조, AI 문서 변경을 이전 또는 다음 상태로 복원 |
+| `canUndo`, `canRedo` | builder editor store의 `computed` | toolbar 이력 버튼 활성 상태 결정 |
+| `showHtmlPreview` | `layouts/builder.vue` | 전체 화면 결과물 미리보기 표시 상태 |
 | `showElementList` | `HtmlDocumentEditor.vue` | 현재 편집 화면 안에서만 사용하는 패널 표시 상태 |
 | `showAiChat` | `HtmlDocumentEditor.vue` | 우측 AI 채팅 패널 표시 상태 |
 | `inspectorMode` | `HtmlDocumentEditor.vue` | Inspector와 Preview가 공유하는 현재 탭 |
@@ -424,13 +477,25 @@ Preview 우측 AI 버튼 click
 → 대화 이력과 현재 HTML을 서버 API에 전달
 → 편집 화면 dim 및 Send 버튼을 Stop 버튼으로 전환
 → Gemini가 수정된 전체 HTML과 설명 반환
+→ 응답 JSON, 종료 사유, HTML 문서 형태 검증
 → parseHtmlDocument(response.html)
+→ store.applyCurrentDocumentEdit()
+→ 변경 전 문서를 undo history에 저장
 → store.currentDocument 교체 및 dirty = true
 → iframe srcdoc 재렌더링
 → AI 응답을 채팅 목록에 표시
 ```
 
 AI는 변경 조각이 아니라 전체 HTML을 반환한다. 클라이언트는 반환된 HTML을 기존 파서로 다시 문서 모델로 변환하므로 요소 목록, 구조 트리, iframe이 같은 결과를 사용한다.
+
+서버는 Gemini의 구조화 응답 스키마를 사용하며 다음 경우 문서를 변경하지 않는다.
+
+- `MAX_TOKENS`로 응답이 중간에 종료된 경우
+- JSON이 파싱되지 않는 경우
+- `html` 필드가 없거나 HTML 문서 형태가 아닌 경우
+- JSON 원문 전체가 `html` 값으로 전달된 경우
+
+클라이언트에서도 HTML 형태를 한 번 더 확인해 JSON 응답 원문이나 일반 설명이 문서에 주입되지 않도록 방어한다.
 
 ### 9.3 요청 취소와 화면 이동 방어
 
@@ -445,9 +510,75 @@ AI 요청 중 sidebar 또는 상단 이동 동작을 실행하면 `useBuilderNav
 
 ### 9.4 dim 영역
 
-요청 중 dim은 Inspector와 Preview가 있는 편집 body 전체를 덮는다. 채팅 패널은 dim보다 높은 z-index를 사용해 메시지 확인과 Stop 버튼 조작을 계속 허용한다. Preview의 좌우 패널 버튼도 요청이 끝날 때까지 비활성화된다.
+요청 중 dim은 좌측 Inspector와 우측 채팅 패널을 제외한 Preview body 영역을 덮는다. 로딩 카드는 현재 Preview 영역의 가로·세로 중앙에 배치되며, PC와 좁은 화면에서 달라지는 채팅 패널 폭을 CSS 변수로 제외한다.
 
-## 10. iframe 재렌더링과 스크롤 보존
+채팅 패널은 dim보다 높은 z-index를 사용해 메시지 확인과 Stop 버튼 조작을 계속 허용한다. Preview의 좌우 패널 버튼도 요청이 끝날 때까지 비활성화된다. 모바일에서는 아래쪽 채팅 영역 높이를 제외한 상단 Preview 영역만 dim 기준으로 사용한다.
+
+## 10. top toolbar와 편집 결과물 프로세스
+
+### 10.1 뒤돌리기와 재실행
+
+문서가 변경되기 직전에 editor store가 현재 상태를 undo history에 저장한다.
+
+```txt
+요소 편집 · 구조 이동 · AI 문서 변경
+→ recordCurrentDocumentForUndo()
+→ 현재 문서, 선택 요소, dirty 스냅샷 저장
+→ redo history 초기화
+→ 변경 결과를 currentDocument에 반영
+```
+
+뒤돌리기:
+
+```txt
+toolbar 뒤돌리기 click
+→ 현재 상태를 redo history에 저장
+→ undo history의 마지막 상태 복원
+→ currentDocument 변경
+→ Inspector와 iframe 재렌더링
+```
+
+재실행은 반대 방향으로 현재 상태를 undo history에 저장하고 redo history의 마지막 상태를 복원한다. 이력이 없으면 대응 버튼은 비활성화된다.
+
+새 HTML 파일을 업로드하거나 새로운 HTML을 생성하면 이전 문서의 이력이 섞이지 않도록 undo와 redo history를 모두 초기화한다.
+
+### 10.2 HTML 다운로드
+
+```txt
+toolbar 다운로드 click
+→ renderFinalHtmlDocument(currentDocument)
+→ 에디터 전용 data 속성과 스타일 제외
+→ text/html Blob 생성
+→ sourceName을 안전한 .html 파일명으로 변환
+→ 임시 object URL로 브라우저 다운로드
+→ object URL 해제
+```
+
+다운로드는 현재 iframe의 편집용 HTML이 아니라 저장 및 배포에 사용할 최종 HTML을 기준으로 한다.
+
+### 10.3 전체 화면 미리보기
+
+```txt
+toolbar 미리보기 click
+→ layouts/builder.vue의 showHtmlPreview = true
+→ HtmlDocumentFullPreview를 body로 Teleport
+→ renderFinalHtmlDocument(currentDocument)
+→ 전체 화면 iframe srcdoc에 표시
+```
+
+미리보기 상단은 기존 toolbar와 같은 viewport 상태를 사용한다.
+
+| 모드 | iframe 너비 |
+| --- | --- |
+| PC | 사용 가능한 영역 100% |
+| Tablet | 768px |
+| Mobile | 390px |
+
+닫기 버튼 또는 Escape를 누르면 overlay만 제거된다. `HtmlDocumentEditor.vue`는 계속 mount된 상태이므로 현재 문서, 선택 상태, scroll, history가 유지된 채 편집 화면으로 복귀한다.
+
+전체 화면 미리보기 iframe도 편집 iframe과 동일하게 `allow-same-origin allow-popups allow-forms` sandbox만 사용하며 스크립트 실행은 허용하지 않는다.
+
+## 11. iframe 재렌더링과 스크롤 보존
 
 `previewHtml`이 변경되면 iframe `srcdoc`이 교체되므로 기존 iframe DOM과 이벤트는 사라진다. 따라서 `handlePreviewLoad()`에서 이벤트와 선택 상태를 매번 다시 연결한다.
 
@@ -461,7 +592,7 @@ AI 요청 중 sidebar 또는 상단 이동 동작을 실행하면 `useBuilderNav
 
 요소나 구조를 명시적으로 선택한 경우에는 대상 요소의 중앙 위치로 스크롤한다. 문서 재렌더링 복원과 사용자 선택 스크롤은 목적이 다르므로 별도 함수로 유지한다.
 
-## 11. 선택과 강조에 사용하는 data 속성
+## 12. 선택과 강조에 사용하는 data 속성
 
 | 속성 | 용도 |
 | --- | --- |
@@ -478,7 +609,7 @@ AI 요청 중 sidebar 또는 상단 이동 동작을 실행하면 `useBuilderNav
 
 이 속성들은 편집 화면용 상태다. 최종 HTML 생성에서는 에디터 전용 상태가 제거되어야 한다.
 
-## 12. 크기와 스크롤 구조
+## 13. 크기와 스크롤 구조
 
 화면은 바깥 문서 전체가 아니라 각 작업 영역이 독립적으로 스크롤하도록 구성한다.
 
@@ -491,7 +622,7 @@ AI 요청 중 sidebar 또는 상단 이동 동작을 실행하면 `useBuilderNav
    │  └─ .html-browser-preview
    │     └─ .html-browser-frame    → iframe body 자체 스크롤
    ├─ .html-editor-ai-chat          → 우측 채팅 목록과 입력 영역
-   └─ .html-editor-loading-overlay  → AI 요청 중 body dim
+   └─ .html-editor-ai-loading       → AI 요청 중 Preview body dim
 ```
 
 이 구조에서는 부모 grid/flex 항목의 `min-height: 0`과 고정된 높이 연결이 중요하다. 상위 높이 규칙이 끊기면 Inspector 목록은 콘텐츠 높이만큼 늘어나 스크롤을 잃고, iframe도 남은 높이를 계산하지 못한다.
@@ -505,7 +636,7 @@ AI 요청 중 sidebar 또는 상단 이동 동작을 실행하면 `useBuilderNav
 - `.html-browser-preview`와 `.html-browser-frame`의 높이 연결
 - Inspector 표시/숨김 전후 Preview 너비와 높이
 
-## 13. 기능 추가 기준
+## 14. 기능 추가 기준
 
 ### 컴포넌트에 둘 내용
 
@@ -534,7 +665,7 @@ AI 요청 중 sidebar 또는 상단 이동 동작을 실행하면 `useBuilderNav
 
 단순히 다른 함수를 한 번 호출하는 wrapper는 추가하지 않는다. 새 facade나 composable은 둘 이상의 상태 또는 작업을 실제로 조합할 때만 만든다.
 
-## 14. 변경 시 검증 체크리스트
+## 15. 변경 시 검증 체크리스트
 
 - 요소 탭에서 iframe 요소 클릭 시 대응 항목이 목록 중앙에 표시되는가
 - 요소 목록 클릭 시 iframe의 대응 요소가 선택되고 중앙에 표시되는가
@@ -553,10 +684,20 @@ AI 요청 중 sidebar 또는 상단 이동 동작을 실행하면 `useBuilderNav
 - AI 요청 중 Send가 Stop으로 바뀌고 요청을 실제로 중단하는가
 - AI 요청 중 sidebar 이동을 취소하면 요청이 유지되는가
 - AI 요청 중 sidebar 이동을 확인하면 요청 중단 후 이동하는가
+- 뒤돌리기로 텍스트, 링크, 미디어와 구조 이동 이전 상태가 복원되는가
+- 재실행으로 뒤돌리기 전 상태가 다시 적용되는가
+- 새 편집 후 기존 redo history가 초기화되는가
+- 새 문서를 설정하면 이전 문서의 undo/redo history가 초기화되는가
+- AI HTML 수정 결과를 한 단계로 뒤돌리고 재실행할 수 있는가
+- 다운로드한 HTML에 현재 편집값이 반영되고 에디터 전용 속성이 제거되는가
+- 다운로드 파일명이 `.html` 확장자와 안전한 문자로 구성되는가
+- 전체 화면 미리보기가 sidebar와 편집 화면을 포함한 viewport 전체를 덮는가
+- 전체 화면 미리보기의 PC, Tablet, Mobile 너비가 toolbar 상태와 동기화되는가
+- 닫기 버튼과 Escape 입력 후 기존 편집 상태가 유지되는가
 - PC, Tablet, Mobile viewport 너비가 정상 적용되는가
 - `pnpm build`가 통과하는가
 
-## 15. 관련 문서
+## 16. 관련 문서
 
 - `docs/analyze/03-html-editable-elements.md`: HTML 입력에서 편집 가능 요소를 추출하는 과정
 - `docs/analyze/02-builder-result-delivery.md`: 편집 결과 전달과 저장 흐름

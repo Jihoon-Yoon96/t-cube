@@ -19,7 +19,7 @@
 
   <rect class="state" x="45" y="90" width="270" height="94" rx="14" />
   <text class="label" x="180" y="125">Builder editor store</text>
-  <text class="detail" x="180" y="153">문서 · 요소 선택 · dirty</text>
+  <text class="detail" x="180" y="153">문서 · 선택 · dirty · undo/redo</text>
 
   <rect class="service" x="45" y="315" width="270" height="94" rx="14" />
   <text class="label" x="180" y="350">parseHtmlDocument</text>
