@@ -244,6 +244,8 @@ import { useBuilderEditor } from '~/composables/editor/useBuilderEditor'
 import { useBuilderView } from '~/composables/view/useBuilderView'
 import { renderEditableHtmlDocument } from '~/services/html/parseHtmlDocument'
 
+type LayoutDropAxis = 'horizontal' | 'vertical'
+
 const builderEditor = useBuilderEditor()
 const builderView = useBuilderView()
 const previewFrame = ref<HTMLIFrameElement | null>(null)
@@ -536,7 +538,10 @@ function handlePreviewLayoutDragOver(event: DragEvent) {
   event.stopPropagation()
   if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
 
-  dropTarget.dataset.tcubeLayoutDropPosition = getLayoutDropPositionByElement(event, dropTarget)
+  const dropAxis = getLayoutDropAxisByElement(dropTarget)
+
+  dropTarget.dataset.tcubeLayoutDropAxis = dropAxis
+  dropTarget.dataset.tcubeLayoutDropPosition = getLayoutDropPositionByElement(event, dropTarget, dropAxis)
 }
 
 /**
@@ -629,6 +634,7 @@ function clearPreviewLayoutDropPosition() {
   previewFrame.value?.contentDocument
     ?.querySelectorAll<HTMLElement>('[data-tcube-layout-drop-position]')
     .forEach((layoutElement) => {
+      delete layoutElement.dataset.tcubeLayoutDropAxis
       delete layoutElement.dataset.tcubeLayoutDropPosition
     })
 }
@@ -640,10 +646,11 @@ function clearPreviewLayoutDragState() {
   if (!frameDocument) return
 
   frameDocument.querySelectorAll<HTMLElement>(
-    '[data-tcube-layout-dragging], [data-tcube-layout-drop-allowed], [data-tcube-layout-drop-position]'
+    '[data-tcube-layout-dragging], [data-tcube-layout-drop-allowed], [data-tcube-layout-drop-position], [data-tcube-layout-drop-axis]'
   ).forEach((layoutElement) => {
     delete layoutElement.dataset.tcubeLayoutDragging
     delete layoutElement.dataset.tcubeLayoutDropAllowed
+    delete layoutElement.dataset.tcubeLayoutDropAxis
     delete layoutElement.dataset.tcubeLayoutDropPosition
   })
 }
@@ -1411,19 +1418,61 @@ function getLayoutDropPosition(event: DragEvent): 'before' | 'after' {
 }
 
 /**
- * 지정한 레이아웃 요소의 중앙을 기준으로 드롭 앞/뒤 위치 계산
+ * 지정한 레이아웃 요소의 배치 축과 중앙을 기준으로 드롭 앞/뒤 위치 계산
  *
  * @param event 드롭 이벤트
  * @param targetElement 드롭 기준 레이아웃 요소
+ * @param dropAxis 드롭 위치 계산 축
  * @returns 기준 노드 앞 또는 뒤 위치
  */
 function getLayoutDropPositionByElement(
   event: DragEvent,
-  targetElement: HTMLElement
+  targetElement: HTMLElement,
+  dropAxis: LayoutDropAxis = getLayoutDropAxisByElement(targetElement)
 ): 'before' | 'after' {
   const rect = targetElement.getBoundingClientRect()
 
+  if (dropAxis === 'horizontal') {
+    return event.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
+  }
+
   return event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
+}
+
+/**
+ * 부모의 CSS 배치 방식과 형제 위치를 기준으로 드롭 표시 축 판별
+ *
+ * @param targetElement 드롭 기준 레이아웃 요소
+ * @returns 좌우 배치이면 horizontal, 상하 배치이면 vertical
+ */
+function getLayoutDropAxisByElement(targetElement: HTMLElement): LayoutDropAxis {
+  const parentElement = targetElement.parentElement
+  const frameWindow = targetElement.ownerDocument.defaultView
+
+  if (!parentElement || !frameWindow) return 'vertical'
+
+  const parentStyle = frameWindow.getComputedStyle(parentElement)
+
+  if (parentStyle.display === 'flex' || parentStyle.display === 'inline-flex') {
+    return parentStyle.flexDirection.startsWith('row') ? 'horizontal' : 'vertical'
+  }
+
+  if (parentStyle.display === 'grid' || parentStyle.display === 'inline-grid') {
+    const targetRect = targetElement.getBoundingClientRect()
+    const hasSiblingOnSameRow = Array.from(parentElement.children).some((childElement) => {
+      if (!(childElement instanceof frameWindow.HTMLElement) || childElement === targetElement) return false
+
+      const siblingRect = childElement.getBoundingClientRect()
+      const verticalOverlap = Math.min(targetRect.bottom, siblingRect.bottom)
+        - Math.max(targetRect.top, siblingRect.top)
+
+      return verticalOverlap > Math.min(targetRect.height, siblingRect.height) / 2
+    })
+
+    return hasSiblingOnSameRow ? 'horizontal' : 'vertical'
+  }
+
+  return 'vertical'
 }
 
 /**

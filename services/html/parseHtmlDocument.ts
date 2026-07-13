@@ -733,9 +733,9 @@ function injectEditorStyle(document: Document) {
     }
 
     html[data-tcube-inspector-mode="layout"] [data-tcube-layout-drop-allowed="true"] {
-      outline: 2px dashed rgba(59, 210, 131, 0.58) !important;
+      outline: 2px dashed rgba(34, 184, 207, 0.82) !important;
       outline-offset: 5px !important;
-      box-shadow: 0 0 0 4px rgba(59, 210, 131, 0.08) !important;
+      box-shadow: 0 0 0 4px rgba(34, 184, 207, 0.1) !important;
     }
 
     html[data-tcube-inspector-mode="layout"] [data-tcube-layout-dragging="true"] {
@@ -743,16 +743,25 @@ function injectEditorStyle(document: Document) {
       cursor: grabbing !important;
     }
 
-    html[data-tcube-inspector-mode="layout"] [data-tcube-layout-drop-position="before"] {
-      outline: 2px solid #ffb020 !important;
+    html[data-tcube-inspector-mode="layout"] [data-tcube-layout-drop-position] {
+      outline: 2px dashed #22b8cf !important;
       outline-offset: 5px !important;
-      box-shadow: inset 0 5px 0 #ffb020, 0 0 0 6px rgba(255, 176, 32, 0.24) !important;
     }
 
-    html[data-tcube-inspector-mode="layout"] [data-tcube-layout-drop-position="after"] {
-      outline: 2px solid #ffb020 !important;
-      outline-offset: 5px !important;
-      box-shadow: inset 0 -5px 0 #ffb020, 0 0 0 6px rgba(255, 176, 32, 0.24) !important;
+    html[data-tcube-inspector-mode="layout"] [data-tcube-layout-drop-axis="vertical"][data-tcube-layout-drop-position="before"] {
+      box-shadow: inset 0 5px 0 #ff9f1c, 0 0 0 6px rgba(34, 184, 207, 0.14) !important;
+    }
+
+    html[data-tcube-inspector-mode="layout"] [data-tcube-layout-drop-axis="vertical"][data-tcube-layout-drop-position="after"] {
+      box-shadow: inset 0 -5px 0 #ff9f1c, 0 0 0 6px rgba(34, 184, 207, 0.14) !important;
+    }
+
+    html[data-tcube-inspector-mode="layout"] [data-tcube-layout-drop-axis="horizontal"][data-tcube-layout-drop-position="before"] {
+      box-shadow: inset 5px 0 0 #ff9f1c, 0 0 0 6px rgba(34, 184, 207, 0.14) !important;
+    }
+
+    html[data-tcube-inspector-mode="layout"] [data-tcube-layout-drop-axis="horizontal"][data-tcube-layout-drop-position="after"] {
+      box-shadow: inset -5px 0 0 #ff9f1c, 0 0 0 6px rgba(34, 184, 207, 0.14) !important;
     }
   `
 
