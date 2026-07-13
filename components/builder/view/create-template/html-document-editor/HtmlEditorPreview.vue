@@ -15,12 +15,24 @@
           type="button"
           :aria-label="showElementList ? '편집 요소 숨기기' : '편집 요소 보이기'"
           :aria-pressed="showElementList"
+          :disabled="aiRequesting"
           @click="showElementList = !showElementList"
         >
           <TcubeIcon :icon="showElementList ? 'ri-side-bar-fill' : 'ri-side-bar-line'" />
         </button>
         <strong>미리보기</strong>
       </div>
+
+      <button
+        class="html-editor-panel-toggle"
+        type="button"
+        :aria-label="showAiChat ? 'AI 채팅 닫기' : 'AI 채팅 열기'"
+        :aria-pressed="showAiChat"
+        :disabled="aiRequesting"
+        @click="emit('toggle-ai-chat')"
+      >
+        <TcubeIcon :icon="showAiChat ? 'ri-chat-ai-fill' : 'ri-chat-ai-line'" />
+      </button>
     </div>
 
     <div ref="previewWrap" class="html-browser-preview">
@@ -75,12 +87,15 @@ const props = defineProps<{
   hoveredElementId: string
   hoveredLayoutNodeId: string
   frameWidth: string
+  showAiChat: boolean
+  aiRequesting: boolean
 }>()
 
 const emit = defineEmits<{
   'update:show-inspector': [visible: boolean]
   'update:selected-layout-node-id': [layoutNodeId: string]
   'update:dragged-layout-node-id': [layoutNodeId: string]
+  'toggle-ai-chat': []
 }>()
 
 const previewFrame = ref<HTMLIFrameElement | null>(null)
