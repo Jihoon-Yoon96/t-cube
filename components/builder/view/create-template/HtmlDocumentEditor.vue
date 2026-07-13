@@ -323,7 +323,12 @@ function handlePreviewLoad() {
   frameDocument.addEventListener('pointermove', handlePreviewPointerMove)
   frameDocument.addEventListener('keydown', handleCloseMenuKeydown)
   frameDocument.addEventListener('scroll', handlePreviewScroll, true)
+  frameDocument.addEventListener('dragstart', handlePreviewLayoutDragStart)
+  frameDocument.addEventListener('dragover', handlePreviewLayoutDragOver)
+  frameDocument.addEventListener('drop', handlePreviewLayoutDrop)
+  frameDocument.addEventListener('dragend', handlePreviewLayoutDragEnd)
   frameDocument.documentElement.addEventListener('pointerleave', clearPreviewHover)
+  frameDocument.documentElement.addEventListener('dragleave', handlePreviewLayoutDragLeave)
 
   frameDocument.querySelectorAll<HTMLElement>('[data-tcube-editable-id]').forEach((element) => {
     element.addEventListener('click', (event) => {
@@ -387,6 +392,14 @@ function syncPreviewInspectorMode() {
   if (!frameDocument) return
 
   frameDocument.documentElement.dataset.tcubeInspectorMode = inspectorMode.value
+  frameDocument.querySelectorAll<HTMLElement>('[data-tcube-layout-id]').forEach((layoutElement) => {
+    layoutElement.draggable = inspectorMode.value === 'layout'
+  })
+
+  if (inspectorMode.value !== 'layout') {
+    draggedLayoutNodeId.value = ''
+    clearPreviewLayoutDragState()
+  }
 }
 
 /**
@@ -402,6 +415,163 @@ function handlePreviewPointerMove(event: PointerEvent) {
     : targetElement?.closest<HTMLElement>('[data-tcube-layout-id]') || null
 
   setPreviewHover(hoverElement)
+}
+
+/**
+ * 구조 모드의 iframe 레이아웃 드래그 시작 처리
+ *
+ * @param event iframe 문서에서 발생한 dragstart 이벤트
+ * @returns 없음
+ */
+function handlePreviewLayoutDragStart(event: DragEvent) {
+  if (inspectorMode.value !== 'layout') return
+
+  const targetElement = event.target as HTMLElement | null
+  const layoutElement = targetElement?.closest<HTMLElement>('[data-tcube-layout-id]')
+  const layoutNode = currentDocument.value?.layoutNodes.find((node) => {
+    return node.id === layoutElement?.dataset.tcubeLayoutId
+  })
+
+  if (!layoutNode) {
+    event.preventDefault()
+    return
+  }
+
+  event.stopPropagation()
+  event.dataTransfer?.setData('text/plain', layoutNode.id)
+  if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
+
+  handleLayoutDragStart(layoutNode)
+}
+
+/**
+ * 구조 모드의 iframe 드롭 가능 대상 및 앞/뒤 위치 표시
+ *
+ * @param event iframe 문서에서 발생한 dragover 이벤트
+ * @returns 없음
+ */
+function handlePreviewLayoutDragOver(event: DragEvent) {
+  if (inspectorMode.value !== 'layout' || !draggedLayoutNodeId.value) return
+
+  const dropTarget = findPreviewLayoutDropTarget(event.target as HTMLElement | null)
+
+  clearPreviewLayoutDropPosition()
+  if (!dropTarget) return
+
+  event.preventDefault()
+  event.stopPropagation()
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+
+  dropTarget.dataset.tcubeLayoutDropPosition = getLayoutDropPositionByElement(event, dropTarget)
+}
+
+/**
+ * iframe 바깥으로 드래그 포인터가 나갈 때 현재 드롭 위치 강조 제거
+ *
+ * @param event iframe documentElement에서 발생한 dragleave 이벤트
+ * @returns 없음
+ */
+function handlePreviewLayoutDragLeave(event: DragEvent) {
+  const currentTarget = event.currentTarget as HTMLElement | null
+  const relatedTarget = event.relatedTarget as Node | null
+
+  if (currentTarget && relatedTarget && currentTarget.contains(relatedTarget)) return
+
+  clearPreviewLayoutDropPosition()
+}
+
+/**
+ * 구조 모드의 iframe 레이아웃 드롭 처리
+ *
+ * @param event iframe 문서에서 발생한 drop 이벤트
+ * @returns 없음
+ */
+function handlePreviewLayoutDrop(event: DragEvent) {
+  if (inspectorMode.value !== 'layout' || !draggedLayoutNodeId.value) return
+
+  const dropTarget = findPreviewLayoutDropTarget(event.target as HTMLElement | null)
+  const targetNodeId = dropTarget?.dataset.tcubeLayoutId
+
+  if (!dropTarget || !targetNodeId) return
+
+  event.preventDefault()
+  event.stopPropagation()
+  moveDraggedLayoutNode(targetNodeId, getLayoutDropPositionByElement(event, dropTarget))
+}
+
+/** iframe 레이아웃 드래그 종료 시 공통 드래그 상태 초기화 */
+function handlePreviewLayoutDragEnd() {
+  handleLayoutDragEnd()
+}
+
+/**
+ * 드래그 중인 노드와 같은 부모를 가진 가장 가까운 iframe 드롭 대상 조회
+ *
+ * @param targetElement dragover/drop 이벤트가 발생한 요소
+ * @returns 드롭 가능한 레이아웃 요소 또는 null
+ */
+function findPreviewLayoutDropTarget(targetElement: HTMLElement | null) {
+  let layoutElement = targetElement?.closest<HTMLElement>('[data-tcube-layout-id]') || null
+
+  while (layoutElement) {
+    const layoutNode = currentDocument.value?.layoutNodes.find((node) => {
+      return node.id === layoutElement?.dataset.tcubeLayoutId
+    })
+
+    if (layoutNode && canDropLayoutNode(layoutNode)) return layoutElement
+
+    layoutElement = layoutElement.parentElement?.closest<HTMLElement>('[data-tcube-layout-id]') || null
+  }
+
+  return null
+}
+
+/** 드래그 중 이동 가능한 형제 레이아웃 범위와 원본 노드 강조 */
+function showPreviewLayoutDropRange() {
+  const frameDocument = previewFrame.value?.contentDocument
+  const draggedNode = currentDocument.value?.layoutNodes.find((node) => node.id === draggedLayoutNodeId.value)
+
+  if (!frameDocument || !draggedNode) return
+
+  clearPreviewLayoutDragState()
+
+  frameDocument.querySelectorAll<HTMLElement>('[data-tcube-layout-id]').forEach((layoutElement) => {
+    const layoutNode = currentDocument.value?.layoutNodes.find((node) => {
+      return node.id === layoutElement.dataset.tcubeLayoutId
+    })
+
+    if (!layoutNode) return
+
+    if (layoutNode.id === draggedNode.id) {
+      layoutElement.dataset.tcubeLayoutDragging = 'true'
+    } else if (layoutNode.parentSelector === draggedNode.parentSelector) {
+      layoutElement.dataset.tcubeLayoutDropAllowed = 'true'
+    }
+  })
+}
+
+/** 현재 iframe 드롭 위치 강조만 제거 */
+function clearPreviewLayoutDropPosition() {
+  previewFrame.value?.contentDocument
+    ?.querySelectorAll<HTMLElement>('[data-tcube-layout-drop-position]')
+    .forEach((layoutElement) => {
+      delete layoutElement.dataset.tcubeLayoutDropPosition
+    })
+}
+
+/** iframe의 레이아웃 드래그 관련 강조 상태 전체 제거 */
+function clearPreviewLayoutDragState() {
+  const frameDocument = previewFrame.value?.contentDocument
+
+  if (!frameDocument) return
+
+  frameDocument.querySelectorAll<HTMLElement>(
+    '[data-tcube-layout-dragging], [data-tcube-layout-drop-allowed], [data-tcube-layout-drop-position]'
+  ).forEach((layoutElement) => {
+    delete layoutElement.dataset.tcubeLayoutDragging
+    delete layoutElement.dataset.tcubeLayoutDropAllowed
+    delete layoutElement.dataset.tcubeLayoutDropPosition
+  })
 }
 
 /**
@@ -1037,9 +1207,13 @@ function hasCollapsedLayoutAncestor(
  * @param layoutNode 드래그를 시작한 레이아웃 노드
  */
 function handleLayoutDragStart(layoutNode: ParsedHtmlLayoutNode) {
+  if (inspectorMode.value !== 'layout') return
+
   draggedLayoutNodeId.value = layoutNode.id
   selectedLayoutNodeId.value = layoutNode.id
   closeLinkMenu()
+  clearPreviewHover()
+  showPreviewLayoutDropRange()
 }
 
 /**
@@ -1047,6 +1221,7 @@ function handleLayoutDragStart(layoutNode: ParsedHtmlLayoutNode) {
  */
 function handleLayoutDragEnd() {
   draggedLayoutNodeId.value = ''
+  clearPreviewLayoutDragState()
 }
 
 /**
@@ -1067,10 +1242,28 @@ function handleLayoutDragOver(layoutNode: ParsedHtmlLayoutNode) {
 function handleLayoutDrop(layoutNode: ParsedHtmlLayoutNode, event: DragEvent) {
   if (!draggedLayoutNodeId.value || !canDropLayoutNode(layoutNode)) return
 
-  const position = getLayoutDropPosition(event)
-  const movedLayoutNodeId = builderEditor.moveCurrentDocumentLayoutNode(draggedLayoutNodeId.value, layoutNode.id, position)
+  moveDraggedLayoutNode(layoutNode.id, getLayoutDropPosition(event))
+}
 
-  draggedLayoutNodeId.value = ''
+/**
+ * 현재 드래그 노드를 지정한 구조 노드 앞 또는 뒤로 이동
+ *
+ * @param targetNodeId 드롭 기준 구조 노드 id
+ * @param position 기준 구조 노드 앞 또는 뒤
+ * @returns 없음
+ */
+function moveDraggedLayoutNode(targetNodeId: string, position: 'before' | 'after') {
+  const targetNode = currentDocument.value?.layoutNodes.find((node) => node.id === targetNodeId)
+
+  if (!draggedLayoutNodeId.value || !targetNode || !canDropLayoutNode(targetNode)) return
+
+  const movedLayoutNodeId = builderEditor.moveCurrentDocumentLayoutNode(
+    draggedLayoutNodeId.value,
+    targetNodeId,
+    position
+  )
+
+  handleLayoutDragEnd()
 
   if (movedLayoutNodeId) {
     selectedLayoutNodeId.value = movedLayoutNodeId
@@ -1112,7 +1305,21 @@ function getLayoutDropPosition(event: DragEvent): 'before' | 'after' {
 
   if (!(target instanceof HTMLElement)) return 'after'
 
-  const rect = target.getBoundingClientRect()
+  return getLayoutDropPositionByElement(event, target)
+}
+
+/**
+ * 지정한 레이아웃 요소의 중앙을 기준으로 드롭 앞/뒤 위치 계산
+ *
+ * @param event 드롭 이벤트
+ * @param targetElement 드롭 기준 레이아웃 요소
+ * @returns 기준 노드 앞 또는 뒤 위치
+ */
+function getLayoutDropPositionByElement(
+  event: DragEvent,
+  targetElement: HTMLElement
+): 'before' | 'after' {
+  const rect = targetElement.getBoundingClientRect()
 
   return event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
 }

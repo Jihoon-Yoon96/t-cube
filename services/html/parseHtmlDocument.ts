@@ -727,6 +727,29 @@ function injectEditorStyle(document: Document) {
       outline-offset: 7px !important;
       box-shadow: 0 0 0 5px rgba(59, 210, 131, 0.16) !important;
     }
+
+    html[data-tcube-inspector-mode="layout"] [data-tcube-layout-drop-allowed="true"] {
+      outline: 2px dashed rgba(59, 210, 131, 0.58) !important;
+      outline-offset: 5px !important;
+      box-shadow: 0 0 0 4px rgba(59, 210, 131, 0.08) !important;
+    }
+
+    html[data-tcube-inspector-mode="layout"] [data-tcube-layout-dragging="true"] {
+      opacity: 0.56 !important;
+      cursor: grabbing !important;
+    }
+
+    html[data-tcube-inspector-mode="layout"] [data-tcube-layout-drop-position="before"] {
+      outline: 2px solid #ffb020 !important;
+      outline-offset: 5px !important;
+      box-shadow: inset 0 5px 0 #ffb020, 0 0 0 6px rgba(255, 176, 32, 0.24) !important;
+    }
+
+    html[data-tcube-inspector-mode="layout"] [data-tcube-layout-drop-position="after"] {
+      outline: 2px solid #ffb020 !important;
+      outline-offset: 5px !important;
+      box-shadow: inset 0 -5px 0 #ffb020, 0 0 0 6px rgba(255, 176, 32, 0.24) !important;
+    }
   `
 
   document.head.appendChild(style)
