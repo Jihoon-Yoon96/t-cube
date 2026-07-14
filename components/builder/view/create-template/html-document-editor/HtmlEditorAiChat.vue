@@ -50,7 +50,9 @@
         placeholder="수정할 내용을 입력하세요"
         aria-label="HTML 수정 요청"
         :disabled="isRequesting"
-        @keydown.enter.exact.prevent="handleSubmit"
+        @compositionstart="isComposing = true"
+        @compositionend="handleCompositionEnd"
+        @keydown.enter.exact="handleComposerEnter"
       />
       <button
         class="html-editor-chat-action"
@@ -82,6 +84,34 @@ const {
 } = useHtmlEditChat()
 const messageList = ref<HTMLElement | null>(null)
 const draft = ref('')
+const isComposing = ref(false)
+const submitAfterComposition = ref(false)
+
+/**
+ * Enter 입력 시 한글 조합 상태를 고려한 전송 처리
+ *
+ * @param event textarea 키보드 이벤트
+ * @returns 없음
+ */
+function handleComposerEnter(event: KeyboardEvent) {
+  if (isComposing.value || event.isComposing || event.keyCode === 229) {
+    submitAfterComposition.value = true
+    return
+  }
+
+  event.preventDefault()
+  handleSubmit()
+}
+
+/** 한글 조합 종료와 v-model 갱신 이후 대기 중인 메시지 전송 */
+function handleCompositionEnd() {
+  isComposing.value = false
+
+  if (!submitAfterComposition.value) return
+
+  submitAfterComposition.value = false
+  nextTick(() => handleSubmit())
+}
 
 /** 입력 중인 HTML 수정 요청 전송 */
 function handleSubmit() {
