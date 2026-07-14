@@ -4,7 +4,6 @@
   <CreateTemplateUploadFile v-else-if="builderView.currentView === 'file-upload'" />
   <CreateTemplateImageDesignPreview v-else-if="builderView.currentView === 'image-preview'" />
   <CreateTemplatePdfDesignPreview v-else-if="builderView.currentView === 'pdf-preview'" />
-  <CreateTemplateHowToMakeDesign v-else-if="builderView.currentView === 'design-method'" />
   <CreateTemplateLayoutBuilder v-else-if="builderView.currentView === 'layout-design'" />
   <CreateTemplateHtmlDocumentEditor v-else-if="builderView.currentView === 'html-editor'" />
   <EditTemplateSelectTemplate v-else-if="builderView.currentView === 'editor'" />
@@ -17,7 +16,6 @@
 </template>
 
 <script setup lang="ts">
-import CreateTemplateHowToMakeDesign from './view/create-template/HowToMakeDesign.vue'
 import CreateTemplateHtmlDocumentEditor from './view/create-template/HtmlDocumentEditor.vue'
 import CreateTemplateImageDesignPreview from './view/create-template/ImageDesignPreview.vue'
 import CreateTemplateLayoutBuilder from './view/create-template/LayoutBuilder.vue'

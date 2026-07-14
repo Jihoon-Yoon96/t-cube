@@ -20,7 +20,6 @@ export function useBuilderView() {
     currentView: builderStoreRefs.currentView,
     activeViewport: builderStoreRefs.activeViewport,
     moveToView: navigationGuard.moveToView,
-    setActiveViewport: builderStore.setActiveViewport,
-    selectDesignMethod: navigationGuard.selectDesignMethod
+    setActiveViewport: builderStore.setActiveViewport
   })
 }

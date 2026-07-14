@@ -98,6 +98,38 @@
         </div>
       </section>
     </main>
+
+    <Teleport to="body">
+      <div
+        v-if="layoutAiGeneration.isGenerating.value"
+        class="layout-generate-loading-dim"
+        role="status"
+        aria-live="polite"
+        aria-label="AI 디자인 시안 생성 중"
+      >
+        <div class="layout-generate-loading-card">
+          <button
+            class="layout-generate-loading-close"
+            type="button"
+            aria-label="AI 생성 취소하고 닫기"
+            title="AI 생성 취소하고 닫기"
+            @click="layoutAiGeneration.cancelLayoutDesignGeneration"
+          >
+            <TcubeIcon icon="ri-close-line" />
+          </button>
+          <span class="layout-generate-loading-icon">
+            <TcubeIcon icon="ri-sparkling-2-line" />
+          </span>
+          <strong>AI가 디자인 시안을 만들고 있습니다</strong>
+          <p>입력 정보와 배치 레이아웃을 분석해 선택한 결과물을 생성하는 중입니다.</p>
+          <div class="layout-generate-loading-time">
+            <TcubeIcon icon="ri-time-line" />
+            <span>작업 소요 시간</span>
+            <strong>{{ generationElapsedLabel }}</strong>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </section>
 </template>
 
@@ -121,6 +153,8 @@ const emit = defineEmits<{
 
 const layoutAiGeneration = useBuilderLayoutAiGeneration()
 const selectedGenerateType = ref<BuilderLayoutGenerateType | null>(null)
+const generationElapsedSeconds = ref(0)
+let generationTimerId: ReturnType<typeof setInterval> | null = null
 
 const viewportLabels: Record<BuilderLayoutViewport, string> = {
   pc: 'PC',
@@ -137,6 +171,14 @@ const generateTypeOptions: Array<{
   { value: 'image', label: '이미지 생성', icon: 'ri-image-ai-line' },
   { value: 'pdf', label: 'PDF 생성', icon: 'ri-file-pdf-2-line' }
 ]
+
+/** AI 생성 작업의 경과 시간을 분:초 형식으로 변환 */
+const generationElapsedLabel = computed(() => {
+  const minutes = Math.floor(generationElapsedSeconds.value / 60)
+  const seconds = generationElapsedSeconds.value % 60
+
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+})
 
 /**
  * 레이아웃 블록 좌표와 시각 속성을 비율 기반 미리보기 스타일로 변환
@@ -192,6 +234,38 @@ function handleGenerate() {
     selectedGenerateType.value
   )
 }
+
+/** 생성 작업 경과 시간 측정 시작 */
+function startGenerationTimer() {
+  stopGenerationTimer()
+  generationElapsedSeconds.value = 0
+  generationTimerId = setInterval(() => {
+    generationElapsedSeconds.value += 1
+  }, 1000)
+}
+
+/** 생성 작업 경과 시간 측정 종료 */
+function stopGenerationTimer() {
+  if (!generationTimerId) return
+
+  clearInterval(generationTimerId)
+  generationTimerId = null
+}
+
+/** AI 생성 상태에 따른 경과 시간 타이머 시작 및 종료 */
+watch(() => layoutAiGeneration.isGenerating.value, (isGenerating) => {
+  if (isGenerating) {
+    startGenerationTimer()
+    return
+  }
+
+  stopGenerationTimer()
+})
+
+/** 화면 해제 시 생성 경과 시간 타이머 정리 */
+onBeforeUnmount(() => {
+  stopGenerationTimer()
+})
 </script>
 
 <style scoped>
@@ -205,9 +279,9 @@ function handleGenerate() {
 
 .layout-generate-toolbar {
   position: sticky;
-  top: -34px;
+  top: 0;
   z-index: 10;
-  min-height: 78px;
+  min-height: 92px;
   display: grid;
   grid-template-columns: minmax(120px, 1fr) auto minmax(240px, 1fr);
   align-items: center;
@@ -223,11 +297,11 @@ function handleGenerate() {
 .layout-generate-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .layout-generate-types button {
-  min-height: 42px;
+  min-height: 52px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -236,11 +310,15 @@ function handleGenerate() {
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-secondary);
-  padding: 0 14px;
+  padding: 0 20px;
   font: inherit;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 900;
   cursor: pointer;
+}
+
+.layout-generate-types button i {
+  font-size: 17px;
 }
 
 .layout-generate-types button:hover,
@@ -449,9 +527,133 @@ function handleGenerate() {
   font-weight: 700;
 }
 
+.layout-generate-loading-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: grid;
+  place-items: center;
+  background: rgba(6, 8, 20, 0.82);
+  padding: 24px;
+  backdrop-filter: blur(8px);
+}
+
+.layout-generate-loading-card {
+  position: relative;
+  width: min(440px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  border: 1px solid rgba(139, 145, 255, 0.28);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(31, 36, 72, 0.98), rgba(15, 19, 42, 0.98));
+  padding: 38px 30px 30px;
+  text-align: center;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.48);
+}
+
+.layout-generate-loading-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(199, 204, 239, 0.18);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #dfe2ff;
+  padding: 0;
+  font: inherit;
+  font-size: 19px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.layout-generate-loading-close:hover {
+  border-color: rgba(199, 204, 239, 0.36);
+  background: rgba(255, 255, 255, 0.13);
+  color: #ffffff;
+}
+
+.layout-generate-loading-close:focus-visible {
+  outline: 2px solid #aeb2ff;
+  outline-offset: 2px;
+}
+
+.layout-generate-loading-icon {
+  width: 70px;
+  height: 70px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(139, 145, 255, 0.34);
+  border-radius: 20px;
+  background: rgba(139, 145, 255, 0.14);
+  color: #aeb2ff;
+  font-size: 34px;
+  animation: layout-generate-pulse 1.5s ease-in-out infinite;
+}
+
+.layout-generate-loading-card > strong {
+  color: #ffffff;
+  font-size: 19px;
+  line-height: 1.35;
+  font-weight: 900;
+}
+
+.layout-generate-loading-card > p {
+  max-width: 350px;
+  margin: -4px 0 4px;
+  color: #c5cae3;
+  font-size: 12px;
+  line-height: 1.6;
+  font-weight: 700;
+}
+
+.layout-generate-loading-time {
+  min-width: 210px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(174, 183, 232, 0.14);
+  border-radius: 11px;
+  background: rgba(6, 8, 20, 0.3);
+  color: #c5cae3;
+  padding: 11px 13px;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.layout-generate-loading-time i {
+  color: #aeb2ff;
+  font-size: 16px;
+}
+
+.layout-generate-loading-time strong {
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+@keyframes layout-generate-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(139, 145, 255, 0.2);
+  }
+
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 0 0 12px rgba(139, 145, 255, 0);
+  }
+}
+
 @media (max-width: 980px) {
   .layout-generate-toolbar {
-    position: static;
     grid-template-columns: 1fr;
   }
 
@@ -469,7 +671,9 @@ function handleGenerate() {
 @media (max-width: 700px) {
   .layout-generate-types button {
     flex: 1 1 30%;
-    padding: 0 8px;
+    min-height: 48px;
+    padding: 0 10px;
+    font-size: 11px;
   }
 
   .layout-generate-actions > button {

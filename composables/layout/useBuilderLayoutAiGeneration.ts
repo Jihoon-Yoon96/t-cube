@@ -14,6 +14,7 @@ export function useBuilderLayoutAiGeneration() {
   const builderStore = useBuilderStore()
   const isGenerating = ref(false)
   const generationError = ref('')
+  let generationAbortController: AbortController | null = null
 
   /**
    * 입력 정보와 레이아웃을 서버 AI 생성 API로 전달 후 결과 유형별 처리
@@ -32,6 +33,9 @@ export function useBuilderLayoutAiGeneration() {
 
     isGenerating.value = true
     generationError.value = ''
+    const abortController = new AbortController()
+
+    generationAbortController = abortController
 
     try {
       const formData = new FormData()
@@ -47,7 +51,8 @@ export function useBuilderLayoutAiGeneration() {
 
       const response = await $fetch<DesignToHtmlResponse>('/api/builder/layout-design-generate', {
         method: 'POST',
-        body: formData
+        body: formData,
+        signal: abortController.signal
       })
 
       if (outputType === 'html') {
@@ -62,10 +67,27 @@ export function useBuilderLayoutAiGeneration() {
 
       await downloadGeneratedDesignPdf(response.html, response.title, brief.viewport)
     } catch (error) {
+      if (abortController.signal.aborted) return
+
       generationError.value = getGenerationErrorMessage(error)
     } finally {
-      isGenerating.value = false
+      if (generationAbortController === abortController) {
+        generationAbortController = null
+        isGenerating.value = false
+      }
     }
+  }
+
+  /** 진행 중인 AI 디자인 생성 요청 취소 */
+  function cancelLayoutDesignGeneration() {
+    if (!generationAbortController) return
+
+    const abortController = generationAbortController
+
+    generationAbortController = null
+    generationError.value = ''
+    isGenerating.value = false
+    abortController.abort()
   }
 
   /**
@@ -104,6 +126,7 @@ export function useBuilderLayoutAiGeneration() {
   return {
     isGenerating: readonly(isGenerating),
     generationError: readonly(generationError),
-    generateLayoutDesign
+    generateLayoutDesign,
+    cancelLayoutDesignGeneration
   }
 }

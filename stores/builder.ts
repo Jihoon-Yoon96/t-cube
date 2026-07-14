@@ -7,7 +7,6 @@ import { useBuilderViewState } from './builder/view'
 import { useBuilderUploadState } from './builder/upload'
 
 export type {
-  BuilderDesignMethod,
   BuilderLayoutBlock,
   BuilderLayoutBlockType,
   BuilderView,

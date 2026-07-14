@@ -5,7 +5,7 @@
 import { useBuilderHtmlGeneration } from '~/composables/html/useBuilderHtmlGeneration'
 import { useHtmlEditChat } from '~/composables/editor/useHtmlEditChat'
 import { useBuilderStore } from '~/stores/builder'
-import type { BuilderDesignMethod, BuilderUploadFileType, BuilderView } from '~/stores/builder/type/types'
+import type { BuilderUploadFileType, BuilderView } from '~/stores/builder/type/types'
 
 /**
  * 빌더 이동 guard 구성
@@ -48,20 +48,6 @@ export function useBuilderNavigationGuard() {
   }
 
   /**
-   * 디자인 시안 작성 방식 선택
-   * AI 요청 중이면 confirm 승인 후 방식 변경
-   *
-   * @param method 선택할 디자인 작성 방식
-   * @returns 선택 처리 여부
-   */
-  function selectDesignMethod(method: BuilderDesignMethod) {
-    if (!confirmAiRequestLeave()) return false
-
-    builderStore.setView(method === 'layout' ? 'layout-design' : 'ai-prompt-design')
-    return true
-  }
-
-  /**
    * AI 요청 중 화면 이탈 여부 확인
    * 승인 시 진행 중인 디자인 생성 또는 HTML 편집 요청 취소
    *
@@ -90,7 +76,6 @@ export function useBuilderNavigationGuard() {
 
   return {
     moveToView,
-    selectUploadFileType,
-    selectDesignMethod
+    selectUploadFileType
   }
 }

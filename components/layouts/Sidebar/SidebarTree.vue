@@ -58,15 +58,8 @@ const designTreeItems = computed(() => [
     label: '레이아웃 작성',
     active: builderView.currentView === 'layout-design',
     depth: 2,
-    last: false,
-    onClick: () => builderView.selectDesignMethod('layout')
-  },
-  {
-    label: 'AI 프롬프트 작성',
-    active: builderView.currentView === 'ai-prompt-design',
-    depth: 2,
     last: true,
-    onClick: () => builderView.selectDesignMethod('ai-prompt')
+    onClick: () => builderView.moveToView('layout-design')
   }
 ])
 
@@ -85,7 +78,7 @@ const createTreeItems = computed(() => {
         active: false,
         depth: 1,
         last: true,
-        onClick: () => builderView.moveToView('design-method')
+        onClick: () => builderView.moveToView('layout-design')
       }
     ]
   }
@@ -105,7 +98,7 @@ const createTreeItems = computed(() => {
         active: false,
         depth: 1,
         last: true,
-        onClick: () => builderView.moveToView('design-method')
+        onClick: () => builderView.moveToView('layout-design')
       }
     ]
   }
@@ -130,15 +123,13 @@ const createTreeItems = computed(() => {
         active: false,
         depth: 1,
         last: true,
-        onClick: () => builderView.moveToView('design-method')
+        onClick: () => builderView.moveToView('layout-design')
       }
     ]
   }
 
   if (
-    builderView.currentView === 'design-method'
-    || builderView.currentView === 'layout-design'
-    || builderView.currentView === 'ai-prompt-design'
+    builderView.currentView === 'layout-design'
   ) {
     return [
       {
@@ -150,10 +141,10 @@ const createTreeItems = computed(() => {
       },
       {
         label: '디자인 시안 작성',
-        active: builderView.currentView === 'design-method',
+        active: false,
         depth: 1,
         last: false,
-        onClick: () => builderView.moveToView('design-method')
+        onClick: () => builderView.moveToView('layout-design')
       },
       ...designTreeItems.value
     ]
@@ -173,7 +164,7 @@ const createTreeItems = computed(() => {
         active: false,
         depth: 1,
         last: true,
-        onClick: () => builderView.moveToView('design-method')
+        onClick: () => builderView.moveToView('layout-design')
       }
     ]
   }
