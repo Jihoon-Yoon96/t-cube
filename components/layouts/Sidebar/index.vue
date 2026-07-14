@@ -1,10 +1,18 @@
 <template>
   <aside class="tc-builder-sidebar">
     <div class="tc-builder-brand">
-      <TcubeIcon icon="ri-edit-box-fill" />
-      <div class="tc-builder-brand-text">
-        <strong>T.CUBE</strong>
-      </div>
+      <button
+        class="tc-builder-sidebar-brand-home-button"
+        type="button"
+        aria-label="초기 화면으로 이동"
+        title="초기 화면으로 이동"
+        @click="emit('go-home')"
+      >
+        <TcubeIcon icon="ri-edit-box-fill" />
+        <span class="tc-builder-brand-text">
+          <strong>T.CUBE</strong>
+        </span>
+      </button>
       <button
         v-if="collapsible"
         class="tc-builder-sidebar-brand-collapse-button"
@@ -45,6 +53,7 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
+  'go-home': []
   'select-create': []
   'select-edit': []
   collapse: []

@@ -8,6 +8,7 @@
         v-if="!isSidebarCollapsed || !showTopToolbar"
         :active-mode="activeMode"
         :collapsible="showTopToolbar"
+        @go-home="builderView.moveToView('start')"
         @select-create="builderView.moveToView('start')"
         @select-edit="builderView.moveToView('editor')"
         @collapse="setSidebarCollapsed(true)"

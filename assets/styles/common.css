@@ -157,6 +157,26 @@ body {
   margin-bottom: 34px;
 }
 
+.tc-builder-sidebar-brand-home-button {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tc-builder-sidebar-brand-home-button:focus-visible {
+  border-radius: 6px;
+  outline: 2px solid rgba(255, 255, 255, 0.78);
+  outline-offset: 4px;
+}
+
 .tc-builder-sidebar-menu {
   min-height: 0;
   display: flex;
