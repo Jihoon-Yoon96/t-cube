@@ -19,14 +19,9 @@ export function useBuilderLayoutDesignToHtml() {
 
   /**
    * 레이아웃 블록 기반 HTML 생성
-   * 생성된 HTML 파싱 및 HTML 편집 화면 전환
-   */
+  * 생성된 HTML 파싱 및 HTML 편집 화면 전환
+  */
   function generateHtmlFromLayoutDesign() {
-    if (!layoutCanvas.layoutBlocks.length) {
-      builderStore.failFileAnalysis('HTML을 생성하려면 먼저 캔버스에 레이아웃 블록을 추가해주세요.')
-      return
-    }
-
     const html = createLayoutDesignHtml(layoutCanvas.layoutBlocks)
     const parsedDocument = parseHtmlDocument(html, {
       sourceName: 'layout-design.html'

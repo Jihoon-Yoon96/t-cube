@@ -137,6 +137,18 @@ export function createLayoutDesignHtml(blocks: BuilderLayoutBlock[]) {
         background: #ffffff;
       }
 
+      .wire-text {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        border: 0;
+        background: transparent !important;
+        padding: 0;
+        font-size: 22px;
+        line-height: 1.4;
+        font-weight: 800;
+      }
+
       @media (max-width: 760px) {
         .page {
           min-height: auto;
@@ -146,7 +158,8 @@ export function createLayoutDesignHtml(blocks: BuilderLayoutBlock[]) {
         }
 
         .wire-block,
-        .wire-button {
+        .wire-button,
+        .wire-text {
           position: static;
           width: 100% !important;
           min-height: 92px;
@@ -199,6 +212,10 @@ function createLayoutBlockMarkup(block: BuilderLayoutBlock) {
 
   if (block.type === 'line') {
     return `      <div class="wire-shape wire-line" style="${style}"></div>`
+  }
+
+  if (block.type === 'text') {
+    return `      <p class="wire-text" style="${style}">${label}</p>`
   }
 
   if (block.type === 'button') {

@@ -1,25 +1,54 @@
 ﻿<template>
-  <section class="layout-builder-screen">
+  <LayoutDesignInfo
+    v-if="currentStep === 'information'"
+    :initial-brief="layoutDesignBrief"
+    @submit="handleInformationSubmit"
+  />
+
+  <LayoutDesignGenerate
+    v-else-if="currentStep === 'generate' && layoutDesignBrief"
+    :brief="layoutDesignBrief"
+    :blocks="builderLayout.layoutBlocks"
+    @back="handleBackToDesign"
+  />
+
+  <section v-else class="layout-builder-screen">
     <div class="layout-builder-header">
       <div>
-        <span class="section-title">LAYOUT DESIGN</span>
+        <span class="section-title">LAYOUT DESIGN · STEP 2</span>
         <h1>레이아웃을 직접 배치해주세요</h1>
         <p>도형 블록을 추가하고 캔버스 위에 배치하면 HTML 초안으로 변환할 수 있습니다.</p>
+        <div v-if="layoutDesignBrief" class="layout-builder-brief">
+          <span><TcubeIcon icon="ri-folder-3-line" />{{ layoutDesignBrief.category }}</span>
+          <span><TcubeIcon icon="ri-focus-3-line" />{{ layoutDesignBrief.purpose }}</span>
+          <span><TcubeIcon icon="ri-device-line" />{{ viewportLabels[layoutDesignBrief.viewport] }}</span>
+          <span v-if="layoutDesignBrief.planningFile">
+            <TcubeIcon icon="ri-file-pdf-2-line" />{{ layoutDesignBrief.planningFile.name }}
+          </span>
+        </div>
       </div>
 
       <div class="layout-builder-actions">
-        <button class="secondary-action" type="button" @click="handleSelectMethodAgain">
-          <TcubeIcon icon="ri-arrow-left-line" />
-          <span>방식 다시 선택</span>
+        <button class="secondary-action" type="button" @click="handleEditInformation">
+          <TcubeIcon icon="ri-edit-line" />
+          <span>정보 수정</span>
+        </button>
+        <button
+          class="secondary-action"
+          type="button"
+          :disabled="!builderLayout.layoutBlocks.length"
+          @click="builderLayout.clearLayoutBlocks"
+        >
+          <TcubeIcon icon="ri-restart-line" />
+          <span>초기화</span>
         </button>
         <button
           class="primary-action"
           type="button"
-          :disabled="!builderLayout.layoutBlocks.length"
-          @click="builderLayoutDesignToHtml.generateHtmlFromLayoutDesign"
+          @click="handleOpenGeneration"
         >
-          <TcubeIcon icon="ri-code-s-slash-line" />
-          <span>HTML 생성</span>
+          <TcubeIcon icon="ri-sparkling-2-line" />
+          <span>디자인 시안 생성</span>
         </button>
       </div>
     </div>
@@ -245,10 +274,11 @@
 </template>
 
 <script setup lang="ts">
+import LayoutDesignGenerate from './LayoutDesignGenerate.vue'
+import LayoutDesignInfo from './LayoutDesignInfo.vue'
 import { useBuilderLayoutCanvas } from '~/composables/layout/useBuilderLayoutCanvas'
-import { useBuilderLayoutDesignToHtml } from '~/composables/layout/useBuilderLayoutDesignToHtml'
-import { useBuilderView } from '~/composables/view/useBuilderView'
 import type { BuilderLayoutBlock, BuilderLayoutBlockType } from '~/stores/builder'
+import type { BuilderLayoutDesignBrief, BuilderLayoutViewport } from '~/types/builder/layout-design'
 
 type DragState = {
   blockId: string
@@ -272,8 +302,8 @@ type ResizeState = {
 }
 
 const builderLayout = useBuilderLayoutCanvas()
-const builderLayoutDesignToHtml = useBuilderLayoutDesignToHtml()
-const builderView = useBuilderView()
+const currentStep = ref<'information' | 'design' | 'generate'>('information')
+const layoutDesignBrief = ref<BuilderLayoutDesignBrief | null>(null)
 const canvasWrapRef = ref<HTMLElement | null>(null)
 const canvasRef = ref<HTMLElement | null>(null)
 const dragState = ref<DragState | null>(null)
@@ -283,17 +313,23 @@ const canvasBaseWidth = 960
 const canvasBaseHeight = 720
 const canvasScaleIncrement = 0.05
 
+const viewportLabels: Record<BuilderLayoutViewport, string> = {
+  pc: 'PC',
+  mobile: 'Mobile',
+  responsive: '반응형'
+}
+
 const shapeTools: Array<{ type: BuilderLayoutBlockType, label: string, icon: string }> = [
   { type: 'rectangle', label: '사각형', icon: 'ri-rectangle-line' },
   { type: 'circle', label: '동그라미', icon: 'ri-circle-line' },
   { type: 'triangle', label: '세모', icon: 'ri-triangle-line' },
-  { type: 'line', label: '선', icon: 'ri-subtract-line' }
+  { type: 'line', label: '선', icon: 'ri-subtract-line' },
+  { type: 'text', label: '텍스트', icon: 'ri-text' }
 ]
 
 const componentTools: Array<{ type: BuilderLayoutBlockType, label: string, icon: string }> = [
   { type: 'header', label: '헤더', icon: 'ri-layout-top-line' },
   { type: 'banner', label: '배너', icon: 'ri-layout-4-line' },
-  { type: 'text', label: '텍스트', icon: 'ri-text' },
   { type: 'image', label: '이미지', icon: 'ri-image-line' },
   { type: 'button', label: '버튼', icon: 'ri-checkbox-blank-line' },
   { type: 'card', label: '카드', icon: 'ri-layout-grid-line' }
@@ -336,7 +372,7 @@ function getBlockStyle(block: BuilderLayoutBlock) {
     zIndex: block.zIndex || 1,
     width: `${block.width}px`,
     height: `${block.height}px`,
-    backgroundColor: block.type === 'triangle' ? 'transparent' : block.backgroundColor,
+    backgroundColor: ['triangle', 'text'].includes(block.type) ? 'transparent' : block.backgroundColor,
     color: textColor,
     '--block-bg': block.backgroundColor,
     '--block-text-color': textColor,
@@ -611,10 +647,30 @@ function clearSelection() {
 }
 
 /**
- * 디자인 작성 방식 선택 화면으로 돌아가기 위해 현재 선택된 작성 방식을 초기화
+ * 정보 입력 완료 값을 저장하고 레이아웃 만들기 단계로 이동
+ *
+ * @param brief 사용자가 입력한 디자인 시안 정보
  */
-function handleSelectMethodAgain() {
-  builderView.moveToView('design-method')
+function handleInformationSubmit(brief: BuilderLayoutDesignBrief) {
+  layoutDesignBrief.value = brief
+  currentStep.value = 'design'
+}
+
+/** 입력 정보를 유지한 채 정보 입력 단계로 이동 */
+function handleEditInformation() {
+  currentStep.value = 'information'
+}
+
+/** 레이아웃과 입력 정보를 확인하는 결과 생성 단계로 이동 */
+function handleOpenGeneration() {
+  if (!layoutDesignBrief.value) return
+
+  currentStep.value = 'generate'
+}
+
+/** 레이아웃 배치 수정을 위해 2단계로 복귀 */
+function handleBackToDesign() {
+  currentStep.value = 'design'
 }
 
 /**
@@ -670,6 +726,37 @@ onBeforeUnmount(() => {
   font-size: 13px;
   line-height: 1.55;
   font-weight: 700;
+}
+
+.layout-builder-brief {
+  max-width: 760px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.layout-builder-brief span {
+  min-width: 0;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  border: 1px solid rgba(139, 145, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(139, 145, 255, 0.08);
+  color: var(--text-secondary);
+  padding: 5px 9px;
+  font-size: 10px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layout-builder-brief i {
+  flex: 0 0 auto;
+  color: var(--accent);
 }
 
 .layout-builder-actions {
@@ -909,6 +996,22 @@ onBeforeUnmount(() => {
   display: none;
 }
 
+.layout-builder-block-text {
+  border-color: transparent;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+.layout-builder-block-text:hover {
+  border-color: rgba(97, 104, 255, 0.28);
+}
+
+.layout-builder-block-text.is-selected {
+  border-color: #6168ff;
+}
+
 .resize-handle {
   position: absolute;
   z-index: 2;
@@ -1092,6 +1195,15 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 1100px) {
+  .layout-builder-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .layout-builder-actions {
+    flex-wrap: wrap;
+  }
+
   .layout-builder-workspace {
     grid-template-columns: 1fr;
   }

@@ -231,11 +231,11 @@ function createLayoutCanvasState() {
       },
       text: {
         type: 'text',
-        label: '텍스트',
-        description: '제목 또는 본문 설명 영역',
+        label: '텍스트를 입력하세요',
+        description: '',
         backgroundColor: '#ffffff',
         width: 340,
-        height: 120
+        height: 60
       },
       image: {
         type: 'image',
