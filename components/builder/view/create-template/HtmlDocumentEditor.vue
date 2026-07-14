@@ -2,12 +2,14 @@
   <section class="html-editor-screen">
     <div
       v-if="currentDocument"
+      ref="editorLayout"
       class="html-editor-layout"
       :class="{
         'show-element-list': showElementList,
         'show-ai-chat': showAiChat,
         'is-ai-loading': isAiRequesting
       }"
+      :style="panelGridStyle"
     >
       <HtmlEditorInspector
         v-if="showElementList"
@@ -26,6 +28,19 @@
         @move-layout="moveDraggedLayoutNode"
       />
 
+      <div
+        v-if="showElementList"
+        class="html-editor-resize-handle is-start"
+        :class="{ 'is-active': activePanelResize === 'start' }"
+        role="separator"
+        aria-label="왼쪽 패널 너비 조절"
+        aria-orientation="vertical"
+        tabindex="0"
+        @pointerdown="startPanelResize('start', $event)"
+        @keydown.left.prevent="resizePanelWithKeyboard('start', -1)"
+        @keydown.right.prevent="resizePanelWithKeyboard('start', 1)"
+      />
+
       <HtmlEditorPreview
         ref="preview"
         v-model:show-inspector="showElementList"
@@ -40,6 +55,19 @@
         :show-ai-chat="showAiChat"
         :ai-requesting="isAiRequesting"
         @toggle-ai-chat="toggleAiChat"
+      />
+
+      <div
+        v-if="showAiChat"
+        class="html-editor-resize-handle is-end"
+        :class="{ 'is-active': activePanelResize === 'end' }"
+        role="separator"
+        aria-label="AI 수정 패널 너비 조절"
+        aria-orientation="vertical"
+        tabindex="0"
+        @pointerdown="startPanelResize('end', $event)"
+        @keydown.left.prevent="resizePanelWithKeyboard('end', -1)"
+        @keydown.right.prevent="resizePanelWithKeyboard('end', 1)"
       />
 
       <HtmlEditorAiChat v-if="showAiChat" @close="closeAiChat" />
@@ -77,23 +105,51 @@ type HtmlEditorPreviewExposed = {
   moveDraggedLayoutNode: (targetNodeId: string, position: HtmlLayoutMovePosition) => void
 }
 
+type HtmlEditorPanelSide = 'start' | 'end'
+
+const PANEL_RESIZE_LIMITS = {
+  start: { default: 340, min: 280, max: 520 },
+  end: { default: 380, min: 320, max: 560 }
+} as const
+const PANEL_RESIZE_HANDLE_WIDTH = 8
+const PANEL_RESIZE_STEP = 16
+const PREVIEW_MIN_WIDTH = 480
+
 const builderEditor = useBuilderEditor()
 const builderView = useBuilderView()
 const htmlEditChat = useHtmlEditChat()
 const preview = ref<HtmlEditorPreviewExposed | null>(null)
+const editorLayout = ref<HTMLElement | null>(null)
 const showElementList = ref(true)
 const showAiChat = ref(false)
+const inspectorPanelWidth = ref<number | null>(null)
+const aiChatPanelWidth = ref<number | null>(null)
+const activePanelResize = ref<HtmlEditorPanelSide | null>(null)
 const inspectorMode = ref<HtmlInspectorMode>('elements')
 const selectedLayoutNodeId = ref('')
 const draggedLayoutNodeId = ref('')
 const hoveredElementId = ref('')
 const hoveredLayoutNodeId = ref('')
+let resizeStartX = 0
+let resizeStartWidth = 0
+let resizePointerId: number | null = null
+let resizeHandleElement: HTMLElement | null = null
 
 /** HTML 편집 AI 요청 진행 여부 */
 const isAiRequesting = computed(() => htmlEditChat.isRequesting.value)
 
 /** 현재 편집 중인 HTML 문서 */
 const currentDocument = computed(() => builderEditor.currentDocument)
+
+/** 사용자가 조절한 좌우 패널 너비를 CSS grid 변수로 전달 */
+const panelGridStyle = computed(() => ({
+  '--html-editor-inspector-width': inspectorPanelWidth.value === null
+    ? undefined
+    : `${inspectorPanelWidth.value}px`,
+  '--html-editor-chat-width': aiChatPanelWidth.value === null
+    ? undefined
+    : `${aiChatPanelWidth.value}px`
+}))
 
 /** 선택한 빌더 viewport에 대응하는 iframe 너비 */
 const previewFrameWidth = computed(() => {
@@ -179,6 +235,126 @@ function moveDraggedLayoutNode(targetNodeId: string, position: HtmlLayoutMovePos
   preview.value?.moveDraggedLayoutNode(targetNodeId, position)
 }
 
+/**
+ * 조절 대상 패널의 현재 렌더링 너비 조회
+ *
+ * @param side 조절할 패널 방향
+ * @returns 현재 패널 너비
+ */
+function getPanelWidth(side: HtmlEditorPanelSide) {
+  const selector = side === 'start' ? '.element-list-panel' : '.html-editor-chat-panel'
+  const panel = editorLayout.value?.querySelector<HTMLElement>(selector)
+
+  return panel?.getBoundingClientRect().width ?? PANEL_RESIZE_LIMITS[side].default
+}
+
+/**
+ * 중앙 HTML 편집 영역의 최소 너비를 보장하는 패널 최대 너비 계산
+ *
+ * @param side 조절할 패널 방향
+ * @returns 현재 화면에서 허용되는 최대 패널 너비
+ */
+function getPanelMaximumWidth(side: HtmlEditorPanelSide) {
+  const limits = PANEL_RESIZE_LIMITS[side]
+  const layoutWidth = editorLayout.value?.getBoundingClientRect().width
+
+  if (!layoutWidth) return limits.max
+
+  const availableWidth = layoutWidth - PREVIEW_MIN_WIDTH - PANEL_RESIZE_HANDLE_WIDTH
+
+  return Math.min(limits.max, Math.max(limits.min, availableWidth))
+}
+
+/**
+ * 패널 너비를 방향별 최소·최대 범위 안에서 반영
+ *
+ * @param side 조절할 패널 방향
+ * @param width 반영할 패널 너비
+ * @returns 없음
+ */
+function setPanelWidth(side: HtmlEditorPanelSide, width: number) {
+  const minimumWidth = PANEL_RESIZE_LIMITS[side].min
+  const maximumWidth = getPanelMaximumWidth(side)
+  const nextWidth = Math.min(maximumWidth, Math.max(minimumWidth, width))
+
+  if (side === 'start') {
+    inspectorPanelWidth.value = nextWidth
+    return
+  }
+
+  aiChatPanelWidth.value = nextWidth
+}
+
+/**
+ * 패널 구분선 pointer 이동에 따른 너비 갱신
+ *
+ * @param event pointer 이동 이벤트
+ * @returns 없음
+ */
+function handlePanelResize(event: PointerEvent) {
+  if (!activePanelResize.value) return
+
+  const pointerDelta = event.clientX - resizeStartX
+  const widthDelta = activePanelResize.value === 'start' ? pointerDelta : -pointerDelta
+
+  setPanelWidth(activePanelResize.value, resizeStartWidth + widthDelta)
+}
+
+/** 패널 드래그 리사이즈 종료 및 전역 이벤트 정리 */
+function stopPanelResize() {
+  if (resizeHandleElement && resizePointerId !== null && resizeHandleElement.hasPointerCapture(resizePointerId)) {
+    resizeHandleElement.releasePointerCapture(resizePointerId)
+  }
+
+  activePanelResize.value = null
+  resizePointerId = null
+  resizeHandleElement = null
+  document.body.classList.remove('html-editor-is-resizing')
+  window.removeEventListener('pointermove', handlePanelResize)
+  window.removeEventListener('pointerup', stopPanelResize)
+  window.removeEventListener('pointercancel', stopPanelResize)
+}
+
+/**
+ * 패널 구분선 pointer 드래그 시작
+ *
+ * @param side 조절할 패널 방향
+ * @param event pointer 시작 이벤트
+ * @returns 없음
+ */
+function startPanelResize(side: HtmlEditorPanelSide, event: PointerEvent) {
+  if (window.innerWidth <= 760 || !(event.currentTarget instanceof HTMLElement)) return
+
+  event.preventDefault()
+  stopPanelResize()
+
+  activePanelResize.value = side
+  resizeStartX = event.clientX
+  resizeStartWidth = getPanelWidth(side)
+  resizePointerId = event.pointerId
+  resizeHandleElement = event.currentTarget
+  resizeHandleElement.setPointerCapture(event.pointerId)
+  document.body.classList.add('html-editor-is-resizing')
+  window.addEventListener('pointermove', handlePanelResize)
+  window.addEventListener('pointerup', stopPanelResize)
+  window.addEventListener('pointercancel', stopPanelResize)
+}
+
+/**
+ * 키보드 방향키로 패널 너비 조절
+ *
+ * @param side 조절할 패널 방향
+ * @param direction 화면 기준 이동 방향
+ * @returns 없음
+ */
+function resizePanelWithKeyboard(side: HtmlEditorPanelSide, direction: -1 | 1) {
+  const widthDelta = side === 'start'
+    ? direction * PANEL_RESIZE_STEP
+    : direction * -PANEL_RESIZE_STEP
+
+  setPanelWidth(side, getPanelWidth(side) + widthDelta)
+}
+
 /** 우측 AI 채팅 패널 열기 또는 닫기 */
 function toggleAiChat() {
   if (isAiRequesting.value) return
@@ -225,6 +401,7 @@ onMounted(() => {
 
 /** 편집기 종료 시 진행 중인 요청과 브라우저 이탈 guard 정리 */
 onBeforeUnmount(() => {
+  stopPanelResize()
   window.removeEventListener('beforeunload', handleBeforeUnload)
   htmlEditChat.cancelRequest()
 })

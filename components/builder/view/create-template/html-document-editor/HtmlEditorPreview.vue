@@ -20,19 +20,22 @@
         >
           <TcubeIcon :icon="showElementList ? 'ri-side-bar-fill' : 'ri-side-bar-line'" />
         </button>
-        <strong>미리보기</strong>
+        <strong>HTML 수정</strong>
       </div>
 
-      <button
-        class="html-editor-panel-toggle"
-        type="button"
-        :aria-label="showAiChat ? 'AI 채팅 닫기' : 'AI 채팅 열기'"
-        :aria-pressed="showAiChat"
-        :disabled="aiRequesting"
-        @click="emit('toggle-ai-chat')"
-      >
-        <TcubeIcon :icon="showAiChat ? 'ri-chat-ai-fill' : 'ri-chat-ai-line'" />
-      </button>
+      <div class="html-editor-preview-title html-editor-preview-title--ai">
+        <strong>AI 수정</strong>
+        <button
+          class="html-editor-panel-toggle"
+          type="button"
+          :aria-label="showAiChat ? 'AI 수정 닫기' : 'AI 수정 열기'"
+          :aria-pressed="showAiChat"
+          :disabled="aiRequesting"
+          @click="emit('toggle-ai-chat')"
+        >
+          <TcubeIcon icon="ri-sparkling-2-line" />
+        </button>
+      </div>
     </div>
 
     <div ref="previewWrap" class="html-browser-preview">

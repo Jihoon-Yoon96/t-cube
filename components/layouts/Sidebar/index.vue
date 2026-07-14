@@ -5,6 +5,16 @@
       <div class="tc-builder-brand-text">
         <strong>T.CUBE</strong>
       </div>
+      <button
+        v-if="collapsible"
+        class="tc-builder-sidebar-brand-collapse-button"
+        type="button"
+        aria-label="사이드바 접기"
+        title="사이드바 접기"
+        @click="emit('collapse')"
+      >
+        <TcubeIcon icon="ri-sidebar-fold-line" />
+      </button>
     </div>
 
     <nav class="tc-builder-sidebar-menu">
@@ -22,6 +32,7 @@
         <SidebarTree v-if="item.key === 'create' && activeMode === 'create'" />
       </div>
     </nav>
+
   </aside>
 </template>
 
@@ -30,11 +41,13 @@ import SidebarTree from './SidebarTree.vue'
 
 defineProps<{
   activeMode: 'create' | 'edit'
+  collapsible: boolean
 }>()
 
 const emit = defineEmits<{
   'select-create': []
   'select-edit': []
+  collapse: []
 }>()
 
 const menuItems = [

@@ -51,7 +51,7 @@
       >
         <TcubeIcon :icon="getElementIcon(element)" />
         <span>
-          <strong>{{ element.label }}</strong>
+          <strong>{{ element.tagName.toUpperCase() }}</strong>
           <small>{{ getElementPreview(element) }}</small>
         </span>
       </button>
@@ -61,7 +61,6 @@
       ref="layoutList"
       v-if="mode === 'layout'"
       class="html-inspector-list layout-node-list"
-      :style="{ '--layout-max-indent': visibleLayoutMaxIndent }"
     >
       <div
         v-for="layoutNode in visibleLayoutNodes"
@@ -77,8 +76,6 @@
         :style="{
           paddingLeft: `${8 + layoutNode.depth * 18}px`,
           '--layout-node-indent': `${layoutNode.depth * 18}px`,
-          '--layout-tree-width': `${layoutNode.depth * 18}px`,
-          '--layout-branch-left': `${9 + Math.max(0, layoutNode.depth - 1) * 18}px`,
           '--layout-branch-scope-left': selectedLayoutBranchIndent
         }"
         :draggable="isLayoutNodeDragIconVisible(layoutNode)"
@@ -120,7 +117,6 @@
               :icon="getLayoutNodeIcon(layoutNode)"
             />
             <strong>{{ layoutNode.tagName }}</strong>
-            <small v-if="layoutNode.previewText">{{ getLayoutNodeTextPreview(layoutNode) }}</small>
           </span>
           <button
             v-if="hasLayoutChildren(layoutNode)"
@@ -211,15 +207,6 @@ const collapsedLayoutNodeIds = ref<string[]>([])
 /** 접힌 조상이 없는 현재 구조 트리 노드 목록 */
 const visibleLayoutNodes = computed(() => {
   return getVisibleHtmlLayoutNodes(props.document.layoutNodes, collapsedLayoutNodeIds.value)
-})
-
-/** 깊은 계층에서도 노드 카드 폭을 유지하기 위한 구조 목록의 최대 들여쓰기 */
-const visibleLayoutMaxIndent = computed(() => {
-  const maxDepth = visibleLayoutNodes.value.reduce((currentMaxDepth, node) => {
-    return Math.max(currentMaxDepth, node.depth)
-  }, 0)
-
-  return `${maxDepth * 18}px`
 })
 
 /** 선택 노드 기준 상위 조상, 직접 부모, 현재 하위 영역 분류 */
@@ -416,18 +403,6 @@ function getLayoutNodeScopeClasses(layoutNode: ParsedHtmlLayoutNode) {
  */
 function getLayoutNodeIcon(layoutNode: ParsedHtmlLayoutNode) {
   return LAYOUT_NODE_ICONS[layoutNode.tagName] || ''
-}
-
-/**
- * 구조 카드에 표시할 텍스트 요약 생성
- *
- * @param layoutNode 텍스트를 요약할 레이아웃 노드
- * @returns 최대 28자로 줄인 텍스트
- */
-function getLayoutNodeTextPreview(layoutNode: ParsedHtmlLayoutNode) {
-  const previewText = layoutNode.previewText.replace(/\s+/g, ' ').trim()
-
-  return previewText.length > 28 ? `${previewText.slice(0, 28)}...` : previewText
 }
 
 /**

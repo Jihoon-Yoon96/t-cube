@@ -50,6 +50,15 @@ body {
   grid-template-columns: 220px 1fr;
   background: var(--surface);
   overflow: hidden;
+  transition: grid-template-columns 180ms ease;
+}
+
+.tc-builder-shell.tc-builder-shell--sidebar-collapsed {
+  grid-template-columns: 0 minmax(0, 1fr);
+}
+
+.tc-builder-shell.tc-builder-shell--sidebar-collapsed .tc-builder-main {
+  grid-column: 1 / -1;
 }
 
 .tc-builder-mobile-header {
@@ -135,11 +144,13 @@ body {
 
 .tc-builder-sidebar {
   min-height: 0;
+  display: flex;
+  flex-direction: column;
   background: linear-gradient(180deg, var(--sidebar-start) 0%, var(--sidebar-end) 100%);
   color: #ffffff;
   padding: 24px 18px;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: hidden;
 }
 
 .tc-builder-sidebar .tc-builder-brand {
@@ -147,9 +158,41 @@ body {
 }
 
 .tc-builder-sidebar-menu {
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
   gap: 6px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.tc-builder-sidebar-brand-collapse-button {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  margin-left: auto;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.tc-builder-sidebar-brand-collapse-button:hover {
+  border-color: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.tc-builder-sidebar-brand-collapse-button i {
+  font-size: 17px;
+  line-height: 1;
 }
 
 .tc-builder-sidebar-menu-group {
@@ -291,11 +334,19 @@ body {
   .tc-builder-shell {
     grid-template-columns: 200px 1fr;
   }
+
+  .tc-builder-shell.tc-builder-shell--sidebar-collapsed {
+    grid-template-columns: 0 minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 760px) {
   .tc-builder-shell {
     grid-template-rows: 72px minmax(0, 1fr);
+    grid-template-columns: 1fr;
+  }
+
+  .tc-builder-shell.tc-builder-shell--sidebar-collapsed {
     grid-template-columns: 1fr;
   }
 

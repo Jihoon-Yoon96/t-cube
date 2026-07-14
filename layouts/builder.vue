@@ -1,10 +1,16 @@
 ﻿<template>
   <div class="tc-builder-page">
-    <div class="tc-builder-shell">
+    <div
+      class="tc-builder-shell"
+      :class="{ 'tc-builder-shell--sidebar-collapsed': isSidebarCollapsed && showTopToolbar }"
+    >
       <BuilderSidebar
+        v-if="!isSidebarCollapsed || !showTopToolbar"
         :active-mode="activeMode"
+        :collapsible="showTopToolbar"
         @select-create="builderView.moveToView('start')"
         @select-edit="builderView.moveToView('editor')"
+        @collapse="setSidebarCollapsed(true)"
       />
 
       <header class="tc-builder-mobile-header">
@@ -23,8 +29,10 @@
             :active-viewport="builderView.activeViewport"
             :can-undo="builderEditor.canUndo"
             :can-redo="builderEditor.canRedo"
+            :sidebar-collapsed="isSidebarCollapsed"
             :viewport-modes="viewportModes"
             @update:active-viewport="builderView.setActiveViewport"
+            @expand-sidebar="setSidebarCollapsed(false)"
             @undo="builderEditor.undoCurrentDocument"
             @redo="builderEditor.redoCurrentDocument"
             @download="downloadCurrentHtml"
@@ -67,6 +75,7 @@ import type { BuilderViewportMode } from '~/stores/builder'
 const builderView = useBuilderView()
 const builderEditor = useBuilderEditor()
 const showHtmlPreview = ref(false)
+const isSidebarCollapsed = ref(false)
 
 const viewportModes: Array<{
   key: BuilderViewportMode
@@ -90,6 +99,18 @@ function openHtmlPreview() {
   if (!builderEditor.currentDocument) return
 
   showHtmlPreview.value = true
+}
+
+/**
+ * HTML 편집 화면의 sidebar 접힘 상태 변경
+ *
+ * @param collapsed sidebar 접힘 여부
+ * @returns 없음
+ */
+function setSidebarCollapsed(collapsed: boolean) {
+  if (collapsed && !showTopToolbar.value) return
+
+  isSidebarCollapsed.value = collapsed
 }
 
 /** 전체 화면 미리보기를 닫고 HTML 편집 화면으로 복귀 */
@@ -137,8 +158,13 @@ function handleSave() {
   builderEditor.markDirty(false)
 }
 
-/** HTML 편집 화면을 벗어나면 열려 있는 전체 화면 미리보기 닫기 */
+/** 화면 전환 시 HTML 편집 전용 UI 상태 초기화 및 sidebar 기본 접힘 적용 */
 watch(() => builderView.currentView, (currentView) => {
-  if (currentView !== 'html-editor') closeHtmlPreview()
-})
+  const isHtmlEditor = currentView === 'html-editor'
+
+  setSidebarCollapsed(isHtmlEditor)
+  if (isHtmlEditor) return
+
+  closeHtmlPreview()
+}, { immediate: true })
 </script>

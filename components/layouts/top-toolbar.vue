@@ -1,6 +1,17 @@
 ﻿<template>
   <div class="top-toolbar">
-    <div class="history-actions" aria-label="편집 이력">
+    <div class="history-actions" aria-label="편집 도구">
+      <button
+        v-if="sidebarCollapsed"
+        class="history-btn sidebar-expand-btn"
+        type="button"
+        aria-label="사이드바 펼치기"
+        title="사이드바 펼치기"
+        @click="emit('expandSidebar')"
+      >
+        <TcubeIcon icon="ri-sidebar-unfold-line" />
+      </button>
+
       <button
         class="history-btn"
         type="button"
@@ -66,6 +77,7 @@ defineProps<{
   activeViewport: ViewportMode
   canUndo: boolean
   canRedo: boolean
+  sidebarCollapsed: boolean
   viewportModes: Array<{
     key: ViewportMode
     label: string
@@ -76,6 +88,7 @@ defineProps<{
 
 const emit = defineEmits<{
   'update:activeViewport': [value: ViewportMode]
+  expandSidebar: []
   undo: []
   redo: []
   download: []
@@ -143,8 +156,14 @@ const emit = defineEmits<{
 
 .history-btn:disabled {
   color: var(--text-muted);
-  opacity: 0.42;
   cursor: not-allowed;
+}
+
+.sidebar-expand-btn {
+  margin-right: 7px;
+  border-color: rgba(139, 145, 255, 0.32);
+  background: rgba(139, 145, 255, 0.12);
+  color: var(--accent);
 }
 
 .device-btn {
