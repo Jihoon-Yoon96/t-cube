@@ -17,8 +17,14 @@
       </div>
     </div>
 
-    <div class="html-inspector-tabs" role="tablist" aria-label="HTML inspector mode">
+    <div
+      class="html-inspector-tabs"
+      :class="{ 'is-layout-only': layoutOnly }"
+      role="tablist"
+      aria-label="HTML inspector mode"
+    >
       <button
+        v-if="!layoutOnly"
         class="html-inspector-tab"
         :class="{ active: mode === 'elements' }"
         type="button"
@@ -194,6 +200,7 @@ const LAYOUT_NODE_ICONS: Record<string, string> = {
 const props = defineProps<{
   document: ParsedHtmlDocument
   mode: HtmlInspectorMode
+  layoutOnly?: boolean
   selectedElementId: string | null
   selectedLayoutNodeId: string
   draggedLayoutNodeId: string

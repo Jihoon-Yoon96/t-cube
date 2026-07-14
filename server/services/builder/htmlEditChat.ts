@@ -5,14 +5,15 @@ import type {
 } from '~/types/builder/html-edit-chat'
 
 type EditHtmlWithChatParams = {
-  html: string
+  outerHtml: string
+  targetLabel: string
   sourceName: string
   messages: HtmlEditChatRequestMessage[]
   signal?: AbortSignal
 }
 
 type GeminiHtmlEditJson = {
-  html: string
+  outerHtml: string
   message: string
   warnings: string[]
 }
@@ -20,7 +21,6 @@ type GeminiHtmlEditJson = {
 const GEMINI_DEFAULT_MODEL = 'gemini-3.5-flash'
 const GEMINI_FALLBACK_MODEL = 'gemini-2.5-flash'
 const GEMINI_RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504])
-const GEMINI_MAX_OUTPUT_TOKENS = 65_536
 
 /**
  * 대화 요청에 맞춰 기존 HTML 수정
@@ -33,8 +33,8 @@ export async function editHtmlWithChat(params: EditHtmlWithChatParams): Promise<
 
   if (!config.geminiApiKey) {
     return {
-      html: params.html,
-      message: 'GEMINI_API_KEY가 설정되지 않아 HTML을 수정하지 않았습니다.',
+      outerHtml: params.outerHtml,
+      message: 'GEMINI_API_KEY가 설정되지 않아 선택 노드를 수정하지 않았습니다.',
       warnings: ['AI HTML 편집 기능을 사용하려면 서버에 GEMINI_API_KEY를 설정해주세요.'],
       meta: {
         sourceName: params.sourceName,
@@ -49,17 +49,17 @@ export async function editHtmlWithChat(params: EditHtmlWithChatParams): Promise<
     apiKey: config.geminiApiKey,
     model: config.geminiHtmlEditModel || config.geminiImageToHtmlModel || GEMINI_DEFAULT_MODEL
   })
-  const html = generated.html?.trim()
+  const outerHtml = generated.outerHtml?.trim()
 
-  if (!html) {
+  if (!outerHtml) {
     throw createError({
       statusCode: 502,
-      statusMessage: 'AI 응답에서 수정된 HTML을 찾을 수 없습니다.'
+      statusMessage: 'AI 응답에서 수정된 노드 outerHTML을 찾을 수 없습니다.'
     })
   }
 
   return {
-    html,
+    outerHtml,
     message: generated.message?.trim() || '요청한 내용에 맞춰 HTML을 수정했습니다.',
     warnings: generated.warnings || [],
     meta: {
@@ -117,7 +117,7 @@ async function requestHtmlEditFromGemini(params: EditHtmlWithChatParams & {
     },
     body: JSON.stringify({
       system_instruction: {
-        parts: [{ text: createHtmlEditSystemPrompt(params.html) }]
+        parts: [{ text: createHtmlEditSystemPrompt(params.outerHtml, params.targetLabel) }]
       },
       contents: params.messages.map((message) => ({
         role: message.role === 'assistant' ? 'model' : 'user',
@@ -129,15 +129,14 @@ async function requestHtmlEditFromGemini(params: EditHtmlWithChatParams & {
           type: 'OBJECT',
           properties: {
             message: { type: 'STRING' },
-            html: { type: 'STRING' },
+            outerHtml: { type: 'STRING' },
             warnings: {
               type: 'ARRAY',
               items: { type: 'STRING' }
             }
           },
-          required: ['message', 'html', 'warnings']
-        },
-        maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS
+          required: ['message', 'outerHtml', 'warnings']
+        }
       }
     }),
     signal: params.signal
@@ -207,35 +206,35 @@ function validateGeminiHtmlEditJson(value: unknown): GeminiHtmlEditJson {
   if (!value || typeof value !== 'object') throw new TypeError('Gemini response is not an object.')
 
   const result = value as Partial<GeminiHtmlEditJson>
-  const html = typeof result.html === 'string' ? result.html.trim() : ''
+  const outerHtml = typeof result.outerHtml === 'string' ? result.outerHtml.trim() : ''
   const message = typeof result.message === 'string' ? result.message.trim() : ''
   const warnings = Array.isArray(result.warnings)
     ? result.warnings.filter((warning): warning is string => typeof warning === 'string')
     : []
 
-  if (!html || !looksLikeHtmlDocument(html)) {
-    throw new TypeError('Gemini response does not contain a valid HTML document.')
+  if (!outerHtml || !looksLikeHtmlElement(outerHtml)) {
+    throw new TypeError('Gemini response does not contain a valid HTML element.')
   }
 
   return {
-    html,
+    outerHtml,
     message: message || '요청한 내용에 맞춰 HTML을 수정했습니다.',
     warnings
   }
 }
 
 /**
- * JSON 원문이나 일반 설명이 HTML로 오인되지 않도록 기본 문서 형태 확인
+ * JSON 원문이나 일반 설명이 HTML 요소로 오인되지 않도록 기본 형태 확인
  *
  * @param value 검사할 HTML 문자열
- * @returns HTML 문서 형태이면 true
+ * @returns HTML 요소 시작 형태이면 true
  */
-function looksLikeHtmlDocument(value: string) {
+function looksLikeHtmlElement(value: string) {
   const trimmed = value.trim()
 
   if (trimmed.startsWith('{') || trimmed.startsWith('[')) return false
 
-  return /<!doctype\s+html\b|<html\b|<body\b|<[a-z][a-z0-9-]*(?:\s[^<>]*?)?>/i.test(trimmed)
+  return /^<[a-z][a-z0-9-]*(?:\s[^<>]*?)?\s*\/?\s*>/i.test(trimmed)
 }
 
 /**

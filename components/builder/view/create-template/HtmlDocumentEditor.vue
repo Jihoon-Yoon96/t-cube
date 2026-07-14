@@ -15,6 +15,7 @@
         v-if="showElementList"
         v-model:mode="inspectorMode"
         :document="currentDocument"
+        :layout-only="showAiChat"
         :selected-element-id="builderEditor.selectedElementId"
         :selected-layout-node-id="selectedLayoutNodeId"
         :dragged-layout-node-id="draggedLayoutNodeId"
@@ -70,7 +71,13 @@
         @keydown.right.prevent="resizePanelWithKeyboard('end', 1)"
       />
 
-      <HtmlEditorAiChat v-if="showAiChat" @close="closeAiChat" />
+      <HtmlEditorAiChat
+        v-if="showAiChat"
+        :selected-layout-node="selectedLayoutNode"
+        :selected-outer-html-length="selectedLayoutNodeOuterHtml.length"
+        @close="closeAiChat"
+        @applied="handleAiLayoutNodeApplied"
+      />
 
       <div v-if="isAiRequesting" class="html-editor-ai-loading" role="status" aria-live="polite">
         <div>
@@ -98,6 +105,7 @@ import HtmlEditorPreview from './html-document-editor/HtmlEditorPreview.vue'
 import { useBuilderEditor } from '~/composables/editor/useBuilderEditor'
 import { useHtmlEditChat } from '~/composables/editor/useHtmlEditChat'
 import { useBuilderView } from '~/composables/view/useBuilderView'
+import { getHtmlLayoutNodeOuterHtml } from '~/services/html/parseHtmlDocument'
 
 type HtmlEditorPreviewExposed = {
   focusEditableElement: (element: ParsedHtmlEditableElement) => void
@@ -126,6 +134,7 @@ const inspectorPanelWidth = ref<number | null>(null)
 const aiChatPanelWidth = ref<number | null>(null)
 const activePanelResize = ref<HtmlEditorPanelSide | null>(null)
 const inspectorMode = ref<HtmlInspectorMode>('elements')
+const inspectorModeBeforeAi = ref<HtmlInspectorMode>('elements')
 const selectedLayoutNodeId = ref('')
 const draggedLayoutNodeId = ref('')
 const hoveredElementId = ref('')
@@ -140,6 +149,18 @@ const isAiRequesting = computed(() => htmlEditChat.isRequesting.value)
 
 /** 현재 편집 중인 HTML 문서 */
 const currentDocument = computed(() => builderEditor.currentDocument)
+
+/** AI 편집 대상으로 선택된 구조 노드 */
+const selectedLayoutNode = computed(() => (
+  currentDocument.value?.layoutNodes.find((node) => node.id === selectedLayoutNodeId.value) || null
+))
+
+/** AI 요청과 노드 크기 안내에 사용할 선택 노드 outerHTML */
+const selectedLayoutNodeOuterHtml = computed(() => {
+  if (!currentDocument.value || !selectedLayoutNode.value) return ''
+
+  return getHtmlLayoutNodeOuterHtml(currentDocument.value, selectedLayoutNode.value.id) || ''
+})
 
 /** 사용자가 조절한 좌우 패널 너비를 CSS grid 변수로 전달 */
 const panelGridStyle = computed(() => ({
@@ -260,7 +281,13 @@ function getPanelMaximumWidth(side: HtmlEditorPanelSide) {
 
   if (!layoutWidth) return limits.max
 
-  const availableWidth = layoutWidth - PREVIEW_MIN_WIDTH - PANEL_RESIZE_HANDLE_WIDTH
+  const isBothPanelsVisible = showElementList.value && showAiChat.value
+  const oppositeSide: HtmlEditorPanelSide = side === 'start' ? 'end' : 'start'
+  const oppositePanelWidth = isBothPanelsVisible ? getPanelWidth(oppositeSide) : 0
+  const handleWidth = isBothPanelsVisible
+    ? PANEL_RESIZE_HANDLE_WIDTH * 2
+    : PANEL_RESIZE_HANDLE_WIDTH
+  const availableWidth = layoutWidth - PREVIEW_MIN_WIDTH - oppositePanelWidth - handleWidth
 
   return Math.min(limits.max, Math.max(limits.min, availableWidth))
 }
@@ -355,12 +382,19 @@ function resizePanelWithKeyboard(side: HtmlEditorPanelSide, direction: -1 | 1) {
   setPanelWidth(side, getPanelWidth(side) + widthDelta)
 }
 
-/** 우측 AI 채팅 패널 열기 또는 닫기 */
+/** 우측 AI 채팅 패널 열기 또는 닫기 및 구조 전용 Inspector 상태 구성 */
 function toggleAiChat() {
   if (isAiRequesting.value) return
 
-  showAiChat.value = !showAiChat.value
-  if (showAiChat.value) showElementList.value = false
+  if (showAiChat.value) {
+    closeAiChat()
+    return
+  }
+
+  inspectorModeBeforeAi.value = inspectorMode.value
+  inspectorMode.value = 'layout'
+  showElementList.value = true
+  showAiChat.value = true
 }
 
 /** AI 요청이 없을 때 우측 채팅 패널 닫기 */
@@ -368,6 +402,25 @@ function closeAiChat() {
   if (isAiRequesting.value) return
 
   showAiChat.value = false
+  inspectorMode.value = inspectorModeBeforeAi.value
+}
+
+/**
+ * AI 교체 후 새로 생성된 구조 노드를 다시 선택하고 미리보기로 이동
+ *
+ * @param layoutNodeId 적용 후 레이아웃 노드 id
+ * @returns 없음
+ */
+function handleAiLayoutNodeApplied(layoutNodeId: string) {
+  const layoutNode = currentDocument.value?.layoutNodes.find((node) => node.id === layoutNodeId)
+
+  if (!layoutNode) {
+    selectedLayoutNodeId.value = ''
+    return
+  }
+
+  selectedLayoutNodeId.value = layoutNode.id
+  nextTick(() => preview.value?.focusLayoutNode(layoutNode))
 }
 
 /**
@@ -383,14 +436,9 @@ function handleBeforeUnload(event: BeforeUnloadEvent) {
   event.returnValue = ''
 }
 
-/** 좌측 Inspector가 열리면 우측 AI 채팅 패널 닫기 */
+/** AI 채팅 중 좌측 구조 Inspector가 닫히지 않도록 표시 상태 유지 */
 watch(showElementList, (visible) => {
-  if (visible) showAiChat.value = false
-})
-
-/** 우측 AI 채팅 패널이 열리면 좌측 Inspector 닫기 */
-watch(showAiChat, (visible) => {
-  if (visible) showElementList.value = false
+  if (showAiChat.value && !visible) showElementList.value = true
 })
 
 /** 편집기 진입 시 이전 채팅 세션 초기화 및 브라우저 이탈 guard 연결 */

@@ -463,39 +463,46 @@ iframe click capture
 Preview 우측 AI 버튼 click
 → HtmlDocumentEditor.toggleAiChat()
 → showAiChat = true
-→ showElementList = false
-→ Preview와 우측 채팅 패널 표시
+→ showElementList = true, inspectorMode = layout
+→ 좌측 구조 Inspector와 Preview, 우측 채팅 패널 표시
 ```
 
-좌측 Inspector와 우측 AI 채팅은 동시에 열리지 않는다. AI 채팅이 열린 상태에서 좌측 패널 버튼을 누르면 AI 채팅이 닫히고 Inspector가 열린다.
+AI 채팅이 열리면 좌측 Inspector도 함께 표시되며 구조 탭만 사용할 수 있다. 구조 목록 또는 iframe에서 수정할 노드를 선택하기 전에는 채팅 입력과 전송을 사용할 수 없다.
 
 ### 9.2 HTML 수정 요청
 
 ```txt
 사용자 메시지 전송
-→ renderFinalHtmlDocument(currentDocument)
-→ 대화 이력과 현재 HTML을 서버 API에 전달
+→ 선택 노드의 현재 편집값이 반영된 outerHTML 추출
+→ 대화 이력과 선택 노드 outerHTML을 서버 API에 전달
 → 편집 화면 dim 및 Send 버튼을 Stop 버튼으로 전환
-→ Gemini가 수정된 전체 HTML과 설명 반환
-→ 응답 JSON, 종료 사유, HTML 문서 형태 검증
-→ parseHtmlDocument(response.html)
+→ Gemini가 수정된 노드 outerHTML과 설명 반환
+→ 응답 JSON, 종료 사유, HTML 요소 기본 형태 검증
+→ 요청 시작 시 선택한 노드를 응답 outerHTML로 교체
+→ 전체 문서 직렬화 및 parseHtmlDocument()
 → store.applyCurrentDocumentEdit()
 → 변경 전 문서를 undo history에 저장
 → store.currentDocument 교체 및 dirty = true
 → iframe srcdoc 재렌더링
+→ 교체된 구조 노드 재선택
 → AI 응답을 채팅 목록에 표시
 ```
 
-AI는 변경 조각이 아니라 전체 HTML을 반환한다. 클라이언트는 반환된 HTML을 기존 파서로 다시 문서 모델로 변환하므로 요소 목록, 구조 트리, iframe이 같은 결과를 사용한다.
+AI는 선택 노드 자체를 포함한 outerHTML 하나만 반환한다. 클라이언트는 기존 문서에서 선택 노드를 교체한 뒤 전체 HTML을 기존 파서로 다시 문서 모델로 변환하므로 요소 목록, 구조 트리, iframe이 같은 결과를 사용한다.
+
+노드를 변경해도 화면의 채팅 기록은 유지하며 각 사용자 프롬프트에는 요청 당시의 노드 라벨을 함께 표시한다. AI 요청에는 현재 노드 selector와 연결된 대화만 전달해 다른 노드의 이전 요청이 수정 문맥에 섞이지 않도록 한다.
+
+선택 노드 outerHTML이 30,000자 이상이면 작업 시간과 AI 토큰 사용량이 증가할 수 있다는 안내만 표시하며 전송을 제한하지 않는다. 원본 노드의 `script`, `iframe`, 이벤트 속성은 사용자가 변경을 요청하지 않으면 보존하도록 프롬프트에서 지시하며 별도 보안 필터는 현재 적용하지 않는다.
 
 서버는 Gemini의 구조화 응답 스키마를 사용하며 다음 경우 문서를 변경하지 않는다.
 
-- `MAX_TOKENS`로 응답이 중간에 종료된 경우
+- 모델 자체 출력 한계로 응답이 중간에 종료된 경우
 - JSON이 파싱되지 않는 경우
-- `html` 필드가 없거나 HTML 문서 형태가 아닌 경우
-- JSON 원문 전체가 `html` 값으로 전달된 경우
+- `outerHtml` 필드가 없거나 HTML 요소 형태가 아닌 경우
+- 하나의 루트 요소로 교체할 수 없는 경우
+- JSON 원문 전체가 `outerHtml` 값으로 전달된 경우
 
-클라이언트에서도 HTML 형태를 한 번 더 확인해 JSON 응답 원문이나 일반 설명이 문서에 주입되지 않도록 방어한다.
+클라이언트에서도 루트 요소가 정확히 하나인지 확인해 JSON 응답 원문이나 일반 설명이 문서에 주입되지 않도록 방어한다.
 
 ### 9.3 요청 취소와 화면 이동 방어
 

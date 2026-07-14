@@ -1,9 +1,11 @@
 import type { ShallowRef } from 'vue'
 import { useBuilderEditor } from '~/composables/editor/useBuilderEditor'
 import {
+  getHtmlLayoutNodeOuterHtml,
   parseHtmlDocument,
-  renderFinalHtmlDocument
+  replaceHtmlLayoutNodeOuterHtml
 } from '~/services/html/parseHtmlDocument'
+import type { ParsedHtmlLayoutNode } from '~/services/html/parseHtmlDocument'
 import type {
   HtmlEditChatMessage,
   HtmlEditChatRequest,
@@ -33,24 +35,32 @@ export function useHtmlEditChat() {
   const abortController = nuxtApp._tcubeHtmlEditChatAbortController
 
   /**
-   * 사용자 요청과 현재 HTML을 AI 편집 API에 전달
+   * 사용자 요청과 선택 노드 outerHTML을 AI 편집 API에 전달
    *
    * @param content 사용자 HTML 수정 요청
-   * @returns 요청 처리 완료 Promise
+   * @param layoutNode 수정할 레이아웃 노드
+   * @returns 적용 후 다시 선택할 레이아웃 노드 id, 미적용 시 null
    */
-  async function sendMessage(content: string) {
+  async function sendMessage(content: string, layoutNode: ParsedHtmlLayoutNode) {
     const userContent = content.trim()
     const currentDocument = builderEditor.currentDocument
 
-    if (!userContent || !currentDocument || isRequesting.value) return
+    if (!userContent || !currentDocument || isRequesting.value) return null
+
+    const sourceOuterHtml = getHtmlLayoutNodeOuterHtml(currentDocument, layoutNode.id)
+
+    if (!sourceOuterHtml) {
+      requestError.value = '선택한 HTML 구조를 현재 문서에서 찾을 수 없습니다.'
+      return null
+    }
 
     const userMessage: HtmlEditChatMessage = {
       id: createMessageId('user'),
       role: 'user',
-      content: userContent
+      content: userContent,
+      targetLabel: layoutNode.label,
+      targetSelector: layoutNode.selector
     }
-    const sourceHtml = renderFinalHtmlDocument(currentDocument)
-
     messages.value = [...messages.value, userMessage]
     requestError.value = ''
     isRequesting.value = true
@@ -60,12 +70,15 @@ export function useHtmlEditChat() {
 
     try {
       const request: HtmlEditChatRequest = {
-        html: sourceHtml,
+        outerHtml: sourceOuterHtml,
+        targetLabel: layoutNode.label,
         sourceName: currentDocument.sourceName,
-        messages: messages.value.map(({ role, content: messageContent }) => ({
-          role,
-          content: messageContent
-        }))
+        messages: messages.value
+          .filter((message) => message.targetSelector === layoutNode.selector)
+          .map(({ role, content: messageContent }) => ({
+            role,
+            content: messageContent
+          }))
       }
       const response = await $fetch<HtmlEditChatResponse>('/api/builder/html-edit-chat', {
         method: 'POST',
@@ -73,15 +86,24 @@ export function useHtmlEditChat() {
         signal: requestAbortController.signal
       })
 
-      applyHtmlEditResponse(response, sourceHtml, currentDocument.sourceName)
+      const appliedLayoutNodeId = applyHtmlEditResponse(
+        response,
+        sourceOuterHtml,
+        currentDocument.sourceName,
+        layoutNode.id
+      )
       messages.value = [
         ...messages.value,
         {
           id: createMessageId('assistant'),
           role: 'assistant',
-          content: createAssistantMessage(response)
+          content: createAssistantMessage(response),
+          targetLabel: layoutNode.label,
+          targetSelector: layoutNode.selector
         }
       ]
+
+      return appliedLayoutNodeId
     } catch (error) {
       if (isAbortError(error)) {
         messages.value = [
@@ -89,15 +111,18 @@ export function useHtmlEditChat() {
           {
             id: createMessageId('assistant'),
             role: 'assistant',
-            content: '요청을 중지했습니다.'
+            content: '요청을 중지했습니다.',
+            targetLabel: layoutNode.label,
+            targetSelector: layoutNode.selector
           }
         ]
-        return
+        return null
       }
 
       requestError.value = error instanceof Error
         ? error.message
         : 'HTML 수정 요청을 처리하는 중 문제가 발생했습니다.'
+      return null
     } finally {
       if (abortController.value === requestAbortController) {
         abortController.value = null
@@ -125,36 +150,44 @@ export function useHtmlEditChat() {
   }
 
   /**
-   * AI가 반환한 HTML을 현재 편집 문서에 반영
+   * AI가 반환한 outerHTML을 선택 노드에 반영
    *
    * @param response HTML 편집 채팅 응답
-   * @param previousHtml 요청 전 HTML
+   * @param previousOuterHtml 요청 전 선택 노드 outerHTML
    * @param sourceName 현재 문서 출처 이름
-   * @returns 없음
+   * @param targetNodeId 교체할 레이아웃 노드 id
+   * @returns 적용 후 다시 선택할 레이아웃 노드 id, 미적용 시 기존 id, 실패 시 null
    */
-  function applyHtmlEditResponse(response: HtmlEditChatResponse, previousHtml: string, sourceName: string) {
-    if (response.html.trim() === previousHtml.trim()) return
-    if (!isHtmlDocumentResponse(response.html)) {
-      throw new TypeError('AI 응답에서 올바른 HTML 문서를 확인할 수 없습니다.')
+  function applyHtmlEditResponse(
+    response: HtmlEditChatResponse,
+    previousOuterHtml: string,
+    sourceName: string,
+    targetNodeId: string
+  ) {
+    if (response.outerHtml.trim() === previousOuterHtml.trim()) return targetNodeId
+
+    const currentDocument = builderEditor.currentDocument
+
+    if (!currentDocument) return null
+
+    const replacement = replaceHtmlLayoutNodeOuterHtml(
+      currentDocument,
+      targetNodeId,
+      response.outerHtml
+    )
+
+    if (!replacement) {
+      throw new TypeError('AI 응답에서 하나의 올바른 HTML 노드를 확인할 수 없습니다.')
     }
 
-    const parsedDocument = parseHtmlDocument(response.html, { sourceName })
+    const parsedDocument = parseHtmlDocument(replacement.html, { sourceName })
+    const appliedLayoutNodeId = parsedDocument.layoutNodes.find((node) => (
+      node.selector === replacement.replacedSelector
+    ))?.id || null
 
     builderEditor.applyCurrentDocumentEdit(parsedDocument)
-  }
 
-  /**
-   * API 응답 원문이나 JSON 문자열이 문서로 주입되지 않도록 HTML 형태 확인
-   *
-   * @param value 검사할 API 응답 HTML
-   * @returns HTML 문서 형태이면 true
-   */
-  function isHtmlDocumentResponse(value: string) {
-    const trimmed = value.trim()
-
-    if (!trimmed || trimmed.startsWith('{') || trimmed.startsWith('[')) return false
-
-    return /<!doctype\s+html\b|<html\b|<body\b|<[a-z][a-z0-9-]*(?:\s[^<>]*?)?>/i.test(trimmed)
+    return appliedLayoutNodeId
   }
 
   /**

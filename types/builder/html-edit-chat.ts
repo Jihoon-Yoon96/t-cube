@@ -6,6 +6,8 @@ export type HtmlEditChatMessage = {
   id: string
   role: HtmlEditChatRole
   content: string
+  targetLabel?: string
+  targetSelector?: string
 }
 
 /** HTML 편집 채팅 API에 전달할 대화 메시지 */
@@ -13,14 +15,15 @@ export type HtmlEditChatRequestMessage = Pick<HtmlEditChatMessage, 'role' | 'con
 
 /** HTML 편집 채팅 API 요청 */
 export type HtmlEditChatRequest = {
-  html: string
+  outerHtml: string
+  targetLabel: string
   sourceName: string
   messages: HtmlEditChatRequestMessage[]
 }
 
 /** HTML 편집 채팅 API 응답 */
 export type HtmlEditChatResponse = {
-  html: string
+  outerHtml: string
   message: string
   warnings: string[]
   meta: {

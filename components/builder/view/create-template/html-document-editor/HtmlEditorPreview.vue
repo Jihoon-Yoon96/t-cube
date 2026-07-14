@@ -15,7 +15,7 @@
           type="button"
           :aria-label="showElementList ? '편집 요소 숨기기' : '편집 요소 보이기'"
           :aria-pressed="showElementList"
-          :disabled="aiRequesting"
+          :disabled="aiRequesting || showAiChat"
           @click="showElementList = !showElementList"
         >
           <TcubeIcon :icon="showElementList ? 'ri-side-bar-fill' : 'ri-side-bar-line'" />

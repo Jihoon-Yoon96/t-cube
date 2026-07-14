@@ -16,12 +16,20 @@
       </button>
     </div>
 
+    <div class="html-editor-chat-target" :class="{ 'is-empty': !selectedLayoutNode }">
+      <span>수정 대상</span>
+      <strong>{{ selectedLayoutNode?.label || '구조에서 노드를 선택해주세요' }}</strong>
+      <p v-if="isLargeTarget">
+        선택한 노드의 범위가 큽니다. 포함된 HTML이 많을수록 작업 시간이 길어지고 AI 토큰 사용량이 증가할 수 있습니다.
+      </p>
+    </div>
+
     <div ref="messageList" class="html-editor-chat-messages" aria-live="polite">
       <div v-if="messages.length === 0" class="html-editor-chat-empty">
         <TcubeIcon icon="ri-sparkling-2-line" />
-        <strong>HTML 수정 내용을 입력해주세요</strong>
-        <p>예: 전체 폰트를 Noto Sans KR로 변경해줘</p>
-        <p>예: footer 태그를 div 태그로 변경해줘</p>
+        <strong>{{ selectedLayoutNode ? '선택한 노드의 수정 내용을 입력해주세요' : '먼저 구조에서 수정할 노드를 선택해주세요' }}</strong>
+        <p v-if="selectedLayoutNode">예: 배경색을 밝은 보라색으로 변경해줘</p>
+        <p v-if="selectedLayoutNode">예: 제목 아래에 설명 문구를 추가해줘</p>
       </div>
 
       <article
@@ -31,6 +39,10 @@
         :class="`is-${message.role}`"
       >
         <span>{{ message.role === 'user' ? '나' : 'AI' }}</span>
+        <small v-if="message.role === 'user' && message.targetLabel">
+          <TcubeIcon icon="ri-node-tree" />
+          {{ message.targetLabel }}
+        </small>
         <p>{{ message.content }}</p>
       </article>
 
@@ -47,9 +59,9 @@
       <textarea
         v-model="draft"
         maxlength="4000"
-        placeholder="수정할 내용을 입력하세요"
+        :placeholder="selectedLayoutNode ? '선택한 노드의 수정 내용을 입력하세요' : '구조 노드 선택 필요'"
         aria-label="HTML 수정 요청"
-        :disabled="isRequesting"
+        :disabled="isRequesting || !selectedLayoutNode"
         @compositionstart="isComposing = true"
         @compositionend="handleCompositionEnd"
         @keydown.enter.exact="handleComposerEnter"
@@ -58,7 +70,7 @@
         class="html-editor-chat-action"
         :class="{ 'is-stop': isRequesting }"
         type="button"
-        :disabled="!isRequesting && !draft.trim()"
+        :disabled="!isRequesting && (!selectedLayoutNode || !draft.trim())"
         @click="handleAction"
       >
         <TcubeIcon :icon="isRequesting ? 'ri-stop-circle-line' : 'ri-send-plane-2-line'" />
@@ -70,9 +82,18 @@
 
 <script setup lang="ts">
 import { useHtmlEditChat } from '~/composables/editor/useHtmlEditChat'
+import type { ParsedHtmlLayoutNode } from '~/services/html/parseHtmlDocument'
+
+const LARGE_TARGET_OUTER_HTML_LENGTH = 30_000
+
+const props = defineProps<{
+  selectedLayoutNode: ParsedHtmlLayoutNode | null
+  selectedOuterHtmlLength: number
+}>()
 
 const emit = defineEmits<{
   'close': []
+  'applied': [layoutNodeId: string]
 }>()
 
 const {
@@ -86,6 +107,9 @@ const messageList = ref<HTMLElement | null>(null)
 const draft = ref('')
 const isComposing = ref(false)
 const submitAfterComposition = ref(false)
+
+/** 선택 노드 크기 안내 표시 여부 */
+const isLargeTarget = computed(() => props.selectedOuterHtmlLength >= LARGE_TARGET_OUTER_HTML_LENGTH)
 
 /**
  * Enter 입력 시 한글 조합 상태를 고려한 전송 처리
@@ -114,13 +138,16 @@ function handleCompositionEnd() {
 }
 
 /** 입력 중인 HTML 수정 요청 전송 */
-function handleSubmit() {
+async function handleSubmit() {
   const content = draft.value.trim()
 
-  if (!content || isRequesting.value) return
+  if (!content || !props.selectedLayoutNode || isRequesting.value) return
 
+  const targetLayoutNode = props.selectedLayoutNode
   draft.value = ''
-  sendMessage(content)
+  const appliedLayoutNodeId = await sendMessage(content, targetLayoutNode)
+
+  if (appliedLayoutNodeId) emit('applied', appliedLayoutNodeId)
 }
 
 /** 요청 상태에 따라 전송 또는 진행 중인 AI 요청 취소 */

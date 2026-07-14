@@ -198,6 +198,68 @@ export function renderFinalHtmlDocument(document: ParsedHtmlDocument) {
 }
 
 /**
+ * 선택한 레이아웃 노드의 현재 편집값이 반영된 outerHTML 조회
+ *
+ * @param document 현재 편집 문서
+ * @param nodeId 조회할 레이아웃 노드 id
+ * @returns 선택 노드 outerHTML, 노드를 찾지 못하면 null
+ */
+export function getHtmlLayoutNodeOuterHtml(document: ParsedHtmlDocument, nodeId: string) {
+  const layoutNode = document.layoutNodes.find((node) => node.id === nodeId)
+
+  if (!layoutNode || typeof DOMParser === 'undefined') return null
+
+  const parser = new DOMParser()
+  const parsedDocument = parser.parseFromString(renderFinalHtmlDocument(document), 'text/html')
+  const targetElement = parsedDocument.querySelector(layoutNode.selector)
+
+  return targetElement?.outerHTML || null
+}
+
+/**
+ * 선택한 레이아웃 노드를 전달받은 outerHTML로 교체
+ *
+ * @param document 현재 편집 문서
+ * @param nodeId 교체할 레이아웃 노드 id
+ * @param replacementOuterHtml 새로 적용할 노드 outerHTML
+ * @returns 교체된 전체 HTML과 새 노드 selector, 교체할 수 없으면 null
+ */
+export function replaceHtmlLayoutNodeOuterHtml(
+  document: ParsedHtmlDocument,
+  nodeId: string,
+  replacementOuterHtml: string
+) {
+  const layoutNode = document.layoutNodes.find((node) => node.id === nodeId)
+
+  if (!layoutNode || typeof DOMParser === 'undefined') return null
+
+  const parser = new DOMParser()
+  const parsedDocument = parser.parseFromString(renderFinalHtmlDocument(document), 'text/html')
+  const targetElement = parsedDocument.querySelector(layoutNode.selector)
+
+  if (!targetElement) return null
+
+  const range = parsedDocument.createRange()
+  range.selectNode(targetElement)
+  const replacementFragment = range.createContextualFragment(replacementOuterHtml.trim())
+  const replacementElements = Array.from(replacementFragment.children)
+  const hasUnexpectedText = Array.from(replacementFragment.childNodes).some((node) => (
+    node.nodeType === Node.TEXT_NODE && Boolean(node.textContent?.trim())
+  ))
+
+  if (replacementElements.length !== 1 || hasUnexpectedText) return null
+
+  const replacementElement = replacementElements[0]
+
+  targetElement.replaceWith(replacementFragment)
+
+  return {
+    html: serializeHtmlDocument(parsedDocument),
+    replacedSelector: createElementSelector(replacementElement)
+  }
+}
+
+/**
  * HTML ?덉씠?꾩썐 ?몃뱶瑜?媛숈? 遺紐? ?덉뿉???대룞
  *
  * @param document - ?꾩옱 ?몄쭛 臾몄꽌

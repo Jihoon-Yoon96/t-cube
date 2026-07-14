@@ -5,15 +5,14 @@ import type {
   HtmlEditChatResponse
 } from '~/types/builder/html-edit-chat'
 
-const MAX_HTML_LENGTH = 2_000_000
 const MAX_MESSAGE_LENGTH = 4_000
 const MAX_MESSAGE_COUNT = 20
 
 /**
  * 대화 기반 HTML 수정 요청 처리
  *
- * @param event HTML과 대화 이력이 포함된 POST 요청
- * @returns 수정된 전체 HTML과 AI 응답 메시지
+ * @param event 선택 노드 outerHTML과 대화 이력이 포함된 POST 요청
+ * @returns 수정된 노드 outerHTML과 AI 응답 메시지
  */
 export default defineEventHandler(async (event): Promise<HtmlEditChatResponse> => {
   const requestBody = await readBody<unknown>(event)
@@ -49,17 +48,16 @@ function parseHtmlEditChatRequest(value: unknown): HtmlEditChatRequest {
   }
 
   const body = value as Partial<HtmlEditChatRequest>
-  const html = typeof body.html === 'string' ? body.html.trim() : ''
+  const outerHtml = typeof body.outerHtml === 'string' ? body.outerHtml.trim() : ''
+  const targetLabel = typeof body.targetLabel === 'string' && body.targetLabel.trim()
+    ? body.targetLabel.trim()
+    : '선택 노드'
   const sourceName = typeof body.sourceName === 'string' && body.sourceName.trim()
     ? body.sourceName.trim()
     : 'edited-document.html'
 
-  if (!html) {
-    throw createError({ statusCode: 400, statusMessage: '수정할 HTML이 필요합니다.' })
-  }
-
-  if (html.length > MAX_HTML_LENGTH) {
-    throw createError({ statusCode: 413, statusMessage: 'HTML 문서 크기가 너무 큽니다.' })
+  if (!outerHtml) {
+    throw createError({ statusCode: 400, statusMessage: '수정할 노드의 outerHTML이 필요합니다.' })
   }
 
   if (!Array.isArray(body.messages) || body.messages.length === 0) {
@@ -72,7 +70,7 @@ function parseHtmlEditChatRequest(value: unknown): HtmlEditChatRequest {
     throw createError({ statusCode: 400, statusMessage: '마지막 대화는 사용자 요청이어야 합니다.' })
   }
 
-  return { html, sourceName, messages }
+  return { outerHtml, targetLabel, sourceName, messages }
 }
 
 /**
