@@ -1,11 +1,10 @@
 import type { BuilderLayoutBlock } from '~/stores/builder/type/types'
-import type { BuilderLayoutGenerateType, BuilderLayoutViewport } from '~/types/builder/layout-design'
+import type { BuilderLayoutViewport } from '~/types/builder/layout-design'
 
 type LayoutDesignPromptParams = {
   category: string
   purpose: string
   viewport: BuilderLayoutViewport
-  outputType: BuilderLayoutGenerateType
   blocks: BuilderLayoutBlock[]
   hasPlanningFile: boolean
 }
@@ -22,12 +21,6 @@ export function createLayoutDesignPrompt(params: LayoutDesignPromptParams) {
     mobile: '모바일',
     responsive: '반응형'
   }[params.viewport]
-  const outputLabel = {
-    html: 'HTML 편집',
-    image: 'PNG 이미지 다운로드',
-    pdf: 'PDF 문서 다운로드'
-  }[params.outputType]
-
   return `당신은 기업용 웹 디자인 시안을 제작하는 전문 UI 디자이너이자 프론트엔드 개발자입니다.
 
 아래 입력 정보와 레이아웃 블록을 바탕으로 완성도 높은 단일 HTML 문서를 생성하세요.
@@ -36,7 +29,7 @@ export function createLayoutDesignPrompt(params: LayoutDesignPromptParams) {
 - 카테고리/브랜드: ${params.category}
 - 목적: ${params.purpose}
 - 화면 기준: ${viewportLabel}
-- 최종 사용 방식: ${outputLabel}
+- 최종 사용 방식: HTML 편집
 - 기획안 PDF 첨부: ${params.hasPlanningFile ? '있음. 첨부 문서의 콘텐츠와 시각적 맥락을 참고' : '없음'}
 
 [레이아웃 블록 JSON]
@@ -49,7 +42,9 @@ ${JSON.stringify(params.blocks, null, 2)}
 4. 외부 JavaScript와 외부 CSS 없이 실행 가능한 완전한 HTML 문서 작성
 5. 이미지가 필요하면 외부 URL 대신 CSS 그라데이션, 도형, inline SVG 또는 data URI 사용
 6. ${viewportLabel} 기준에 맞춰 화면 구성. 반응형이면 모바일 media query 포함
-7. 결과에는 편집 가능한 텍스트와 명확한 semantic HTML 사용
+7. 단순 div 나열을 피하고 header, nav, main, section, article, aside, footer 등 의미에 맞는 시멘틱 HTML 요소를 적극적으로 사용
+8. 제목은 h1부터 순서가 어긋나지 않도록 구성하고, 버튼·링크·이미지에는 용도에 맞는 요소와 접근 가능한 이름 또는 alt 제공
+9. 문서 구조만 보아도 각 영역의 역할을 이해할 수 있도록 올바른 HTML 계층 구성
 
 반드시 아래 JSON 형식만 반환하세요. Markdown 코드 펜스는 사용하지 마세요.
 {

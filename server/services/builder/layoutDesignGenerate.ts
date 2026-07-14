@@ -4,13 +4,12 @@ import { createLayoutDesignHtml } from '~/services/builder/layoutDesignToHtml'
 import type { DesignToHtmlSourceFile } from './geminiToHtml'
 import type { BuilderLayoutBlock } from '~/stores/builder/type/types'
 import type { DesignToHtmlResponse } from '~/types/builder/design-to-html'
-import type { BuilderLayoutGenerateType, BuilderLayoutViewport } from '~/types/builder/layout-design'
+import type { BuilderLayoutViewport } from '~/types/builder/layout-design'
 
 type GenerateLayoutDesignParams = {
   category: string
   purpose: string
   viewport: BuilderLayoutViewport
-  outputType: BuilderLayoutGenerateType
   blocks: BuilderLayoutBlock[]
   planningFile?: DesignToHtmlSourceFile
 }
@@ -43,7 +42,6 @@ export function generateLayoutDesign(params: GenerateLayoutDesignParams): Promis
       category: params.category,
       purpose: params.purpose,
       viewport: params.viewport,
-      outputType: params.outputType,
       blocks: params.blocks,
       hasPlanningFile: Boolean(params.planningFile)
     }),

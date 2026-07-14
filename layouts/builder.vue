@@ -36,7 +36,7 @@
             @expand-sidebar="setSidebarCollapsed(false)"
             @undo="builderEditor.undoCurrentDocument"
             @redo="builderEditor.redoCurrentDocument"
-            @download="downloadCurrentHtml"
+            @download="downloadCurrentDocument"
             @preview="openHtmlPreview"
             @save="handleSave"
           />
@@ -70,8 +70,10 @@ import BuilderSidebar from '~/components/layouts/Sidebar/index.vue'
 import BuilderTopToolbar from '~/components/layouts/top-toolbar.vue'
 import { useBuilderEditor } from '~/composables/editor/useBuilderEditor'
 import { useBuilderView } from '~/composables/view/useBuilderView'
+import { downloadGeneratedDesignImage, downloadGeneratedDesignPdf } from '~/services/browser/downloadGeneratedDesign'
 import { renderFinalHtmlDocument } from '~/services/html/parseHtmlDocument'
 import type { BuilderViewportMode } from '~/stores/builder'
+import type { BuilderDownloadType } from '~/types/builder/download'
 
 const builderView = useBuilderView()
 const builderEditor = useBuilderEditor()
@@ -119,18 +121,36 @@ function closeHtmlPreview() {
   showHtmlPreview.value = false
 }
 
-/** 현재 편집 상태를 최종 HTML 파일로 다운로드 */
-function downloadCurrentHtml() {
+/**
+ * 현재 편집 상태를 선택 유형 파일로 다운로드
+ * 이미지와 PDF는 최종 HTML을 현재 viewport 기준으로 렌더링
+ *
+ * @param type 다운로드 파일 유형
+ * @returns 다운로드 완료 Promise
+ */
+async function downloadCurrentDocument(type: BuilderDownloadType) {
   const currentDocument = builderEditor.currentDocument
 
   if (!currentDocument) return
 
   const html = renderFinalHtmlDocument(currentDocument)
+  const baseFileName = createDownloadBaseFileName(currentDocument.sourceName)
+
+  if (type === 'image') {
+    await downloadGeneratedDesignImage(html, baseFileName, builderView.activeViewport)
+    return
+  }
+
+  if (type === 'pdf') {
+    await downloadGeneratedDesignPdf(html, baseFileName, builderView.activeViewport)
+    return
+  }
+
   const blobUrl = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }))
   const downloadAnchor = document.createElement('a')
 
   downloadAnchor.href = blobUrl
-  downloadAnchor.download = createHtmlDownloadFileName(currentDocument.sourceName)
+  downloadAnchor.download = `${baseFileName}.html`
   document.body.appendChild(downloadAnchor)
   downloadAnchor.click()
   downloadAnchor.remove()
@@ -138,20 +158,15 @@ function downloadCurrentHtml() {
 }
 
 /**
- * 원본 source 이름을 안전한 HTML 다운로드 파일명으로 변환
+ * 원본 source 이름을 안전한 다운로드 기본 파일명으로 변환
  *
  * @param sourceName 현재 HTML 문서의 원본 파일명
- * @returns `.html` 확장자를 가진 다운로드 파일명
+ * @returns 확장자를 제외한 안전한 파일명
  */
-function createHtmlDownloadFileName(sourceName: string) {
+function createDownloadBaseFileName(sourceName: string) {
   const sourceFileName = sourceName.trim().split(/[\\/]/).pop() || 'edited-document'
   const safeFileName = sourceFileName.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-').trim()
-
-  if (/\.html?$/i.test(safeFileName)) return safeFileName
-
-  const baseName = safeFileName.replace(/\.[^.]+$/, '') || 'edited-document'
-
-  return `${baseName}.html`
+  return safeFileName.replace(/\.[^.]+$/, '') || 'edited-document'
 }
 
 /** 현재 HTML 변경 상태를 저장 완료 상태로 전환 */

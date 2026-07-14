@@ -1,4 +1,7 @@
 import type { BuilderLayoutViewport } from '~/types/builder/layout-design'
+import type { BuilderViewportMode } from '~/stores/builder'
+
+type DesignRenderViewport = BuilderLayoutViewport | BuilderViewportMode
 
 type RenderedDesign = {
   dataUrl: string
@@ -17,7 +20,7 @@ type RenderedDesign = {
 export async function downloadGeneratedDesignImage(
   html: string,
   fileName: string,
-  viewport: BuilderLayoutViewport
+  viewport: DesignRenderViewport
 ) {
   const rendered = await renderHtmlToPng(html, viewport)
 
@@ -36,7 +39,7 @@ export async function downloadGeneratedDesignImage(
 export async function downloadGeneratedDesignPdf(
   html: string,
   fileName: string,
-  viewport: BuilderLayoutViewport
+  viewport: DesignRenderViewport
 ) {
   const rendered = await renderHtmlToPng(html, viewport)
   const { jsPDF } = await import('jspdf')
@@ -76,9 +79,15 @@ export async function downloadGeneratedDesignPdf(
  * @param viewport 생성 기준 화면 유형
  * @returns PNG 데이터 URL과 실제 렌더링 크기
  */
-async function renderHtmlToPng(html: string, viewport: BuilderLayoutViewport): Promise<RenderedDesign> {
+async function renderHtmlToPng(html: string, viewport: DesignRenderViewport): Promise<RenderedDesign> {
   const iframe = document.createElement('iframe')
-  const viewportWidth = viewport === 'mobile' ? 390 : viewport === 'pc' ? 1440 : 1200
+  const viewportWidth = viewport === 'mobile'
+    ? 390
+    : viewport === 'tablet'
+      ? 768
+      : ['pc', 'desktop'].includes(viewport)
+        ? 1440
+        : 1200
 
   iframe.style.position = 'fixed'
   iframe.style.left = '-100000px'

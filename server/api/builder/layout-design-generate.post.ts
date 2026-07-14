@@ -1,7 +1,7 @@
 import { generateLayoutDesign } from '~/server/services/builder/layoutDesignGenerate'
 import type { BuilderLayoutBlock } from '~/stores/builder/type/types'
 import type { DesignToHtmlResponse } from '~/types/builder/design-to-html'
-import type { BuilderLayoutGenerateType, BuilderLayoutViewport } from '~/types/builder/layout-design'
+import type { BuilderLayoutViewport } from '~/types/builder/layout-design'
 
 type LayoutDesignBriefPayload = {
   category?: unknown
@@ -19,10 +19,9 @@ export default defineEventHandler(async (event): Promise<DesignToHtmlResponse> =
   const formData = await readMultipartFormData(event)
   const brief = parseJsonField<LayoutDesignBriefPayload>(formData, 'brief')
   const blocks = parseJsonField<BuilderLayoutBlock[]>(formData, 'blocks')
-  const outputType = readTextField(formData, 'outputType')
   const planningFile = formData?.find((item) => item.name === 'planningFile')
 
-  if (!isValidBrief(brief) || !Array.isArray(blocks) || !isGenerateType(outputType)) {
+  if (!isValidBrief(brief) || !Array.isArray(blocks)) {
     throw createError({
       statusCode: 400,
       statusMessage: '디자인 생성 정보가 올바르지 않습니다.'
@@ -40,7 +39,6 @@ export default defineEventHandler(async (event): Promise<DesignToHtmlResponse> =
     category: brief.category,
     purpose: brief.purpose,
     viewport: brief.viewport,
-    outputType,
     blocks,
     planningFile: planningFile?.data.length
       ? {
@@ -101,16 +99,6 @@ function isValidBrief(brief: LayoutDesignBriefPayload | null): brief is {
     && brief.purpose.trim()
     && ['pc', 'mobile', 'responsive'].includes(String(brief.viewport))
   )
-}
-
-/**
- * 결과 유형 검증
- *
- * @param value 검증할 문자열
- * @returns 지원 결과 유형이면 true
- */
-function isGenerateType(value: string): value is BuilderLayoutGenerateType {
-  return ['html', 'image', 'pdf'].includes(value)
 }
 
 /**

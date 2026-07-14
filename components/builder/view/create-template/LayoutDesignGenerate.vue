@@ -5,21 +5,6 @@
         <span class="section-title">LAYOUT DESIGN · STEP 3</span>
       </div>
 
-      <div class="layout-generate-types" aria-label="생성 결과 유형">
-        <button
-          v-for="option in generateTypeOptions"
-          :key="option.value"
-          type="button"
-          :class="{ 'is-selected': selectedGenerateType === option.value }"
-          :aria-pressed="selectedGenerateType === option.value"
-          :disabled="layoutAiGeneration.isGenerating.value"
-          @click="selectedGenerateType = option.value"
-        >
-          <TcubeIcon :icon="option.icon" />
-          <span>{{ option.label }}</span>
-        </button>
-      </div>
-
       <div class="layout-generate-actions">
         <button
           class="secondary-action"
@@ -33,7 +18,7 @@
         <button
           class="primary-action"
           type="button"
-          :disabled="!selectedGenerateType || layoutAiGeneration.isGenerating.value"
+          :disabled="layoutAiGeneration.isGenerating.value"
           @click="handleGenerate"
         >
           <TcubeIcon
@@ -121,7 +106,7 @@
             <TcubeIcon icon="ri-sparkling-2-line" />
           </span>
           <strong>AI가 디자인 시안을 만들고 있습니다</strong>
-          <p>입력 정보와 배치 레이아웃을 분석해 선택한 결과물을 생성하는 중입니다.</p>
+          <p>입력 정보와 배치 레이아웃을 분석해 HTML 디자인 시안을 생성하는 중입니다.</p>
           <div class="layout-generate-loading-time">
             <TcubeIcon icon="ri-time-line" />
             <span>작업 소요 시간</span>
@@ -138,7 +123,6 @@ import { useBuilderLayoutAiGeneration } from '~/composables/layout/useBuilderLay
 import type { BuilderLayoutBlock } from '~/stores/builder/type/types'
 import type {
   BuilderLayoutDesignBrief,
-  BuilderLayoutGenerateType,
   BuilderLayoutViewport
 } from '~/types/builder/layout-design'
 
@@ -152,7 +136,6 @@ const emit = defineEmits<{
 }>()
 
 const layoutAiGeneration = useBuilderLayoutAiGeneration()
-const selectedGenerateType = ref<BuilderLayoutGenerateType | null>(null)
 const generationElapsedSeconds = ref(0)
 let generationTimerId: ReturnType<typeof setInterval> | null = null
 
@@ -161,16 +144,6 @@ const viewportLabels: Record<BuilderLayoutViewport, string> = {
   mobile: 'Mobile',
   responsive: '반응형'
 }
-
-const generateTypeOptions: Array<{
-  value: BuilderLayoutGenerateType
-  label: string
-  icon: string
-}> = [
-  { value: 'html', label: 'HTML 생성', icon: 'ri-code-s-slash-line' },
-  { value: 'image', label: '이미지 생성', icon: 'ri-image-ai-line' },
-  { value: 'pdf', label: 'PDF 생성', icon: 'ri-file-pdf-2-line' }
-]
 
 /** AI 생성 작업의 경과 시간을 분:초 형식으로 변환 */
 const generationElapsedLabel = computed(() => {
@@ -224,14 +197,11 @@ function getReadableTextColor(backgroundColor: string) {
   return luminance > 0.58 ? '#111827' : '#ffffff'
 }
 
-/** 선택 유형에 맞춰 AI 디자인 결과 생성 */
+/** 입력 정보와 레이아웃 기반 AI HTML 디자인 생성 */
 function handleGenerate() {
-  if (!selectedGenerateType.value) return
-
   layoutAiGeneration.generateLayoutDesign(
     props.brief,
-    props.blocks,
-    selectedGenerateType.value
+    props.blocks
   )
 }
 
@@ -283,7 +253,7 @@ onBeforeUnmount(() => {
   z-index: 10;
   min-height: 92px;
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) auto minmax(240px, 1fr);
+  grid-template-columns: minmax(120px, 1fr) minmax(240px, 1fr);
   align-items: center;
   gap: 20px;
   border-bottom: 1px solid rgba(174, 183, 232, 0.12);
@@ -293,48 +263,10 @@ onBeforeUnmount(() => {
   backdrop-filter: blur(16px);
 }
 
-.layout-generate-types,
 .layout-generate-actions {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.layout-generate-types button {
-  min-height: 52px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  border: 1px solid rgba(174, 183, 232, 0.14);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-secondary);
-  padding: 0 20px;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-.layout-generate-types button i {
-  font-size: 17px;
-}
-
-.layout-generate-types button:hover,
-.layout-generate-types button.is-selected {
-  border-color: rgba(139, 145, 255, 0.62);
-  background: rgba(139, 145, 255, 0.16);
-  color: #ffffff;
-}
-
-.layout-generate-types button.is-selected {
-  box-shadow: inset 0 0 0 1px rgba(139, 145, 255, 0.2);
-}
-
-.layout-generate-types button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
 }
 
 .layout-generate-actions {
@@ -661,7 +593,6 @@ onBeforeUnmount(() => {
     display: none;
   }
 
-  .layout-generate-types,
   .layout-generate-actions {
     flex-wrap: wrap;
     justify-content: center;
@@ -669,13 +600,6 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 700px) {
-  .layout-generate-types button {
-    flex: 1 1 30%;
-    min-height: 48px;
-    padding: 0 10px;
-    font-size: 11px;
-  }
-
   .layout-generate-actions > button {
     flex: 1 1 auto;
     justify-content: center;

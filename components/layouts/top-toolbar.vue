@@ -52,10 +52,35 @@
     </div>
 
     <div class="top-actions">
-      <button class="toolbar-btn" type="button" @click="emit('download')">
-        <TcubeIcon icon="ri-download-2-line" />
-        <span>다운로드</span>
-      </button>
+      <div ref="downloadMenuRef" class="toolbar-download">
+        <button
+          class="toolbar-btn"
+          type="button"
+          aria-haspopup="menu"
+          :aria-expanded="showDownloadMenu"
+          @click="toggleDownloadMenu"
+        >
+          <TcubeIcon icon="ri-download-2-line" />
+          <span>다운로드</span>
+          <TcubeIcon :icon="showDownloadMenu ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'" />
+        </button>
+
+        <div v-if="showDownloadMenu" class="toolbar-download-menu" role="menu">
+          <button
+            v-for="option in downloadOptions"
+            :key="option.type"
+            type="button"
+            role="menuitem"
+            @click="selectDownloadType(option.type)"
+          >
+            <TcubeIcon :icon="option.icon" />
+            <span>
+              <strong>{{ option.label }}</strong>
+              <small>{{ option.description }}</small>
+            </span>
+          </button>
+        </div>
+      </div>
 
       <button class="toolbar-btn" type="button" @click="emit('preview')">
         <TcubeIcon icon="ri-eye-line" />
@@ -71,6 +96,9 @@
 </template>
 
 <script setup lang="ts">
+import { onClickOutside } from '@vueuse/core'
+import type { BuilderDownloadType } from '~/types/builder/download'
+
 type ViewportMode = 'desktop' | 'tablet' | 'mobile'
 
 defineProps<{
@@ -91,18 +119,55 @@ const emit = defineEmits<{
   expandSidebar: []
   undo: []
   redo: []
-  download: []
+  download: [type: BuilderDownloadType]
   preview: []
   save: []
 }>()
+
+const downloadMenuRef = ref<HTMLElement | null>(null)
+const showDownloadMenu = ref(false)
+
+const downloadOptions: Array<{
+  type: BuilderDownloadType
+  label: string
+  description: string
+  icon: string
+}> = [
+  { type: 'html', label: 'HTML', description: '편집 가능한 HTML 파일', icon: 'ri-code-s-slash-line' },
+  { type: 'image', label: '이미지', description: 'PNG 이미지 파일', icon: 'ri-image-line' },
+  { type: 'pdf', label: 'PDF', description: 'PDF 문서 파일', icon: 'ri-file-pdf-2-line' }
+]
+
+/** 다운로드 유형 메뉴 열기 및 닫기 */
+function toggleDownloadMenu() {
+  showDownloadMenu.value = !showDownloadMenu.value
+}
+
+/**
+ * 다운로드 유형 선택 후 상위 다운로드 처리 요청
+ *
+ * @param type 선택한 다운로드 파일 유형
+ */
+function selectDownloadType(type: BuilderDownloadType) {
+  showDownloadMenu.value = false
+  emit('download', type)
+}
+
+onClickOutside(downloadMenuRef, () => {
+  showDownloadMenu.value = false
+})
 </script>
 
 <style scoped>
 .top-toolbar {
+  position: relative;
+  z-index: 50;
   height: 74px;
+  flex: 0 0 auto;
   display: grid;
   grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr);
   align-items: center;
+  overflow: visible;
   border-bottom: 1px solid var(--line);
   background: rgba(17, 21, 40, 0.92);
   padding: 0 24px;
@@ -208,6 +273,72 @@ const emit = defineEmits<{
   gap: 9px;
 }
 
+.toolbar-download {
+  position: relative;
+}
+
+.toolbar-download-menu {
+  position: absolute;
+  top: calc(100% + 9px);
+  right: 0;
+  z-index: 40;
+  width: 230px;
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(174, 183, 232, 0.16);
+  border-radius: 12px;
+  background: rgba(17, 21, 40, 0.98);
+  padding: 7px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(16px);
+}
+
+.toolbar-download-menu > button {
+  min-width: 0;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-primary);
+  padding: 9px 10px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.toolbar-download-menu > button:hover,
+.toolbar-download-menu > button:focus-visible {
+  background: rgba(139, 145, 255, 0.14);
+  color: #ffffff;
+  outline: none;
+}
+
+.toolbar-download-menu > button > i {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-size: 19px;
+}
+
+.toolbar-download-menu > button > span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.toolbar-download-menu strong {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.toolbar-download-menu small {
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+}
+
 .toolbar-btn {
   height: 36px;
   display: inline-flex;
@@ -265,6 +396,14 @@ const emit = defineEmits<{
 
   .toolbar-btn {
     flex: 1;
+  }
+
+  .toolbar-download {
+    flex: 1;
+  }
+
+  .toolbar-download .toolbar-btn {
+    width: 100%;
   }
 }
 </style>

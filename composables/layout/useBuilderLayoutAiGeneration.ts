@@ -1,9 +1,8 @@
-import { downloadGeneratedDesignImage, downloadGeneratedDesignPdf } from '~/services/browser/downloadGeneratedDesign'
 import { parseHtmlDocument } from '~/services/html/parseHtmlDocument'
 import { useBuilderStore } from '~/stores/builder'
 import type { BuilderLayoutBlock } from '~/stores/builder/type/types'
 import type { DesignToHtmlResponse } from '~/types/builder/design-to-html'
-import type { BuilderLayoutDesignBrief, BuilderLayoutGenerateType } from '~/types/builder/layout-design'
+import type { BuilderLayoutDesignBrief } from '~/types/builder/layout-design'
 
 /**
  * 레이아웃 정보 기반 AI 결과 생성 및 유형별 후처리 구성
@@ -21,13 +20,11 @@ export function useBuilderLayoutAiGeneration() {
    *
    * @param brief 1단계 디자인 정보
    * @param blocks 2단계 레이아웃 블록
-   * @param outputType 선택 결과 유형
    * @returns 생성 및 후처리 완료 Promise
    */
   async function generateLayoutDesign(
     brief: BuilderLayoutDesignBrief,
-    blocks: BuilderLayoutBlock[],
-    outputType: BuilderLayoutGenerateType
+    blocks: BuilderLayoutBlock[]
   ) {
     if (isGenerating.value) return
 
@@ -46,7 +43,6 @@ export function useBuilderLayoutAiGeneration() {
         viewport: brief.viewport
       }))
       formData.append('blocks', JSON.stringify(blocks))
-      formData.append('outputType', outputType)
       if (brief.planningFile) formData.append('planningFile', brief.planningFile)
 
       const response = await $fetch<DesignToHtmlResponse>('/api/builder/layout-design-generate', {
@@ -55,17 +51,7 @@ export function useBuilderLayoutAiGeneration() {
         signal: abortController.signal
       })
 
-      if (outputType === 'html') {
-        applyGeneratedHtmlToEditor(response)
-        return
-      }
-
-      if (outputType === 'image') {
-        await downloadGeneratedDesignImage(response.html, response.title, brief.viewport)
-        return
-      }
-
-      await downloadGeneratedDesignPdf(response.html, response.title, brief.viewport)
+      applyGeneratedHtmlToEditor(response)
     } catch (error) {
       if (abortController.signal.aborted) return
 
