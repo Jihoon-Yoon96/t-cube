@@ -350,18 +350,36 @@ body.html-editor-is-resizing iframe {
   cursor: pointer;
 }
 
-.layout-node-item.tree-child::before {
+.layout-node-connector {
+  position: absolute !important;
+  z-index: 1 !important;
+  top: -6px;
+  bottom: -6px;
+  left: calc(8px + (var(--layout-node-connector-level) - 1) * 18px);
+  width: 1px;
+  border-left: 1px solid rgba(139, 145, 255, 0.38);
+  pointer-events: none;
+}
+
+.layout-node-connector-own::after {
   content: '';
   position: absolute;
-  z-index: 1;
-  top: -6px;
-  left: calc(8px + var(--layout-node-indent) - 18px);
+  top: 100%;
+  left: -1px;
+  height: 100%;
+  border-left: 1px solid rgba(139, 145, 255, 0.38);
+}
+
+.layout-node-connector-own {
+  bottom: auto;
   width: 18px;
   height: calc(50% + 6px);
   border-bottom: 1px solid rgba(139, 145, 255, 0.38);
-  border-left: 1px solid rgba(139, 145, 255, 0.38);
   border-bottom-left-radius: 4px;
-  pointer-events: none;
+}
+
+.layout-node-connector-own.layout-node-connector-terminal::after {
+  content: none;
 }
 
 .layout-node-item > * {

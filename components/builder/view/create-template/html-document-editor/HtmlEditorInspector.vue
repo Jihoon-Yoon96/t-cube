@@ -91,6 +91,17 @@
         @keydown.enter.prevent="emit('select-layout', layoutNode)"
         @keydown.space.prevent="emit('select-layout', layoutNode)"
       >
+        <span
+          v-for="connector in layoutNodeConnectors.get(layoutNode.id)"
+          :key="connector.level"
+          class="layout-node-connector"
+          :class="{
+            'layout-node-connector-own': connector.own,
+            'layout-node-connector-terminal': connector.terminal
+          }"
+          :style="{ '--layout-node-connector-level': connector.level }"
+          aria-hidden="true"
+        />
         <span class="layout-node-scope-highlight" aria-hidden="true" />
         <span class="layout-node-branch-highlight" aria-hidden="true" />
         <div class="layout-node-card">
@@ -204,9 +215,51 @@ const elementList = ref<HTMLElement | null>(null)
 const layoutList = ref<HTMLElement | null>(null)
 const collapsedLayoutNodeIds = ref<string[]>([])
 
+interface LayoutNodeConnector {
+  level: number
+  own: boolean
+  terminal: boolean
+}
+
 /** 접힌 조상이 없는 현재 구조 트리 노드 목록 */
 const visibleLayoutNodes = computed(() => {
   return getVisibleHtmlLayoutNodes(props.document.layoutNodes, collapsedLayoutNodeIds.value)
+})
+
+/** 각 구조 노드 행에 표시할 현재 분기선과 조상 세로선 목록 */
+const layoutNodeConnectors = computed(() => {
+  const nodeBySelector = new Map(props.document.layoutNodes.map((node) => [node.selector, node]))
+  const lastChildByParentSelector = new Map<string, string>()
+
+  props.document.layoutNodes.forEach((node) => {
+    lastChildByParentSelector.set(node.parentSelector, node.id)
+  })
+
+  return new Map(visibleLayoutNodes.value.map((node) => {
+    const connectors: LayoutNodeConnector[] = []
+    let ancestorNode = nodeBySelector.get(node.parentSelector)
+
+    while (ancestorNode) {
+      if (
+        ancestorNode.depth > 0
+        && lastChildByParentSelector.get(ancestorNode.parentSelector) !== ancestorNode.id
+      ) {
+        connectors.unshift({ level: ancestorNode.depth, own: false, terminal: false })
+      }
+
+      ancestorNode = nodeBySelector.get(ancestorNode.parentSelector)
+    }
+
+    if (node.depth > 0) {
+      connectors.push({
+        level: node.depth,
+        own: true,
+        terminal: lastChildByParentSelector.get(node.parentSelector) === node.id
+      })
+    }
+
+    return [node.id, connectors] as const
+  }))
 })
 
 /** 선택 노드 기준 상위 조상, 직접 부모, 현재 하위 영역 분류 */
