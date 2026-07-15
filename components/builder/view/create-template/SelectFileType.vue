@@ -1,8 +1,8 @@
 <template>
   <section class="creation-start">
     <div class="creation-intro">
-      <h1>디자인 시안 파일 유형을 선택해주세요</h1>
-      <p>HTML, 이미지, PDF 파일을 업로드하면 시안의 구조와 디자인 요소를 분석해 템플릿 생성을 시작합니다.</p>
+      <h1>웹페이지 파일 유형을 선택해주세요</h1>
+      <p>HTML, 이미지, PDF 파일을 업로드하면 구조와 디자인 요소를 분석해 웹페이지 생성을 시작합니다.</p>
     </div>
 
     <div class="upload-options">

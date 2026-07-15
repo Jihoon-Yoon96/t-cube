@@ -67,14 +67,14 @@ const createTreeItems = computed(() => {
   if (builderView.currentView === 'start') {
     return [
       {
-        label: '파일 업로드',
+        label: '웹페이지 파일 업로드',
         active: false,
         depth: 1,
         last: false,
         onClick: () => builderView.moveToView('pdf-image-upload')
       },
       {
-        label: '디자인 시안 작성',
+        label: 'AI 웹페이지 만들기',
         active: false,
         depth: 1,
         last: true,
@@ -86,7 +86,7 @@ const createTreeItems = computed(() => {
   if (builderView.currentView === 'pdf-image-upload') {
     return [
       {
-        label: '파일 업로드',
+        label: '웹페이지 파일 업로드',
         active: true,
         depth: 1,
         last: false,
@@ -94,7 +94,7 @@ const createTreeItems = computed(() => {
       },
       ...uploadTreeItems.value,
       {
-        label: '디자인 시안 작성',
+        label: 'AI 웹페이지 만들기',
         active: false,
         depth: 1,
         last: true,
@@ -111,7 +111,7 @@ const createTreeItems = computed(() => {
   ) {
     return [
       {
-        label: '파일 업로드',
+        label: '웹페이지 파일 업로드',
         active: false,
         depth: 1,
         last: false,
@@ -119,7 +119,7 @@ const createTreeItems = computed(() => {
       },
       ...uploadTreeItems.value,
       {
-        label: '디자인 시안 작성',
+        label: 'AI 웹페이지 만들기',
         active: false,
         depth: 1,
         last: true,
@@ -133,14 +133,14 @@ const createTreeItems = computed(() => {
   ) {
     return [
       {
-        label: '파일 업로드',
+        label: '웹페이지 파일 업로드',
         active: false,
         depth: 1,
         last: false,
         onClick: () => builderView.moveToView('pdf-image-upload')
       },
       {
-        label: '디자인 시안 작성',
+        label: 'AI 웹페이지 만들기',
         active: false,
         depth: 1,
         last: false,
@@ -153,14 +153,14 @@ const createTreeItems = computed(() => {
   if (builderView.currentView === 'preview') {
     return [
       {
-        label: '파일 업로드',
+        label: '웹페이지 파일 업로드',
         active: false,
         depth: 1,
         last: false,
         onClick: () => builderView.moveToView('pdf-image-upload')
       },
       {
-        label: '디자인 시안 작성',
+        label: 'AI 웹페이지 만들기',
         active: false,
         depth: 1,
         last: true,

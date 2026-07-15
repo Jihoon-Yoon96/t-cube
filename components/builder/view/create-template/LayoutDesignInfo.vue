@@ -2,7 +2,7 @@
   <section class="layout-info-screen">
     <header class="layout-info-header">
       <span class="section-title">LAYOUT DESIGN · STEP 1</span>
-      <h1>디자인 시안 정보를 입력해주세요</h1>
+      <h1>만들고 싶은 웹페이지 정보를 입력해주세요</h1>
       <p>화면의 성격과 목적을 입력하면 다음 단계에서 레이아웃을 구성할 수 있습니다.</p>
     </header>
 

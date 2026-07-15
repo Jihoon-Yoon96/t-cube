@@ -48,7 +48,7 @@
           @click="handleOpenGeneration"
         >
           <TcubeIcon icon="ri-sparkling-2-line" />
-          <span>디자인 시안 생성</span>
+          <span>AI 웹페이지 생성</span>
         </button>
       </div>
     </div>

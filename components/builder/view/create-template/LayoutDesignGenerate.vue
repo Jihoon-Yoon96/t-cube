@@ -13,7 +13,7 @@
           @click="emit('back')"
         >
           <TcubeIcon icon="ri-arrow-left-line" />
-          <span>뒤로가기</span>
+          <span>레이아웃 수정</span>
         </button>
         <button
           class="primary-action"
@@ -90,7 +90,7 @@
         class="layout-generate-loading-dim"
         role="status"
         aria-live="polite"
-        aria-label="AI 디자인 시안 생성 중"
+        aria-label="AI 웹페이지 생성 중"
       >
         <div class="layout-generate-loading-card">
           <button
@@ -105,8 +105,8 @@
           <span class="layout-generate-loading-icon">
             <TcubeIcon icon="ri-sparkling-2-line" />
           </span>
-          <strong>AI가 디자인 시안을 만들고 있습니다</strong>
-          <p>입력 정보와 배치 레이아웃을 분석해 HTML 디자인 시안을 생성하는 중입니다.</p>
+          <strong>AI가 웹페이지를 만들고 있습니다</strong>
+          <p>입력 정보와 배치 레이아웃을 분석해 편집 가능한 HTML을 생성하는 중입니다.</p>
           <div class="layout-generate-loading-time">
             <TcubeIcon icon="ri-time-line" />
             <span>작업 소요 시간</span>
