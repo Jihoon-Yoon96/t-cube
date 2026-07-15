@@ -1,3 +1,5 @@
+import type { HtmlEditOperation } from '~/types/builder/html-edit-chat'
+
 export type ParsedHtmlElementType = 'text' | 'image' | 'link' | 'picture' | 'video'
 
 export type ParsedHtmlMediaSource = {
@@ -217,21 +219,21 @@ export function getHtmlLayoutNodeOuterHtml(document: ParsedHtmlDocument, nodeId:
 }
 
 /**
- * 선택한 레이아웃 노드를 전달받은 outerHTML로 교체
+ * 선택한 레이아웃 노드를 기준으로 복수 HTML 편집 작업 적용
  *
  * @param document 현재 편집 문서
- * @param nodeId 교체할 레이아웃 노드 id
- * @param replacementOuterHtml 새로 적용할 노드 outerHTML
- * @returns 교체된 전체 HTML과 새 노드 selector, 교체할 수 없으면 null
+ * @param nodeId 작업 기준 레이아웃 노드 id
+ * @param operations 순서대로 적용할 HTML 편집 작업
+ * @returns 편집된 전체 HTML과 선택 노드 selector, 적용할 수 없으면 null
  */
-export function replaceHtmlLayoutNodeOuterHtml(
+export function applyHtmlLayoutNodeOperations(
   document: ParsedHtmlDocument,
   nodeId: string,
-  replacementOuterHtml: string
+  operations: HtmlEditOperation[]
 ) {
   const layoutNode = document.layoutNodes.find((node) => node.id === nodeId)
 
-  if (!layoutNode || typeof DOMParser === 'undefined') return null
+  if (!layoutNode || operations.length === 0 || typeof DOMParser === 'undefined') return null
 
   const parser = new DOMParser()
   const parsedDocument = parser.parseFromString(renderFinalHtmlDocument(document), 'text/html')
@@ -239,24 +241,63 @@ export function replaceHtmlLayoutNodeOuterHtml(
 
   if (!targetElement) return null
 
-  const range = parsedDocument.createRange()
-  range.selectNode(targetElement)
-  const replacementFragment = range.createContextualFragment(replacementOuterHtml.trim())
-  const replacementElements = Array.from(replacementFragment.children)
-  const hasUnexpectedText = Array.from(replacementFragment.childNodes).some((node) => (
-    node.nodeType === Node.TEXT_NODE && Boolean(node.textContent?.trim())
-  ))
+  let selectedElement = targetElement
+  let afterCursor = targetElement
 
-  if (replacementElements.length !== 1 || hasUnexpectedText) return null
+  for (const operation of operations) {
+    const operationElement = createHtmlOperationElement(
+      parsedDocument,
+      selectedElement,
+      operation.outerHtml
+    )
 
-  const replacementElement = replacementElements[0]
+    if (!operationElement) return null
 
-  targetElement.replaceWith(replacementFragment)
+    if (operation.operation === 'replace') {
+      selectedElement.replaceWith(operationElement)
+
+      if (afterCursor === selectedElement) afterCursor = operationElement
+
+      selectedElement = operationElement
+      continue
+    }
+
+    if (operation.operation === 'insertBefore') {
+      selectedElement.before(operationElement)
+      continue
+    }
+
+    afterCursor.after(operationElement)
+    afterCursor = operationElement
+  }
+
 
   return {
     html: serializeHtmlDocument(parsedDocument),
-    replacedSelector: createElementSelector(replacementElement)
+    selectedSelector: createElementSelector(selectedElement)
   }
+}
+
+/**
+ * 작업 outerHTML을 현재 선택 노드 문맥의 단일 요소로 변환
+ *
+ * @param document 작업 대상 DOM 문서
+ * @param selectedElement 현재 선택 요소
+ * @param outerHtml 변환할 단일 노드 outerHTML
+ * @returns 변환된 단일 요소, 올바르지 않으면 null
+ */
+function createHtmlOperationElement(document: Document, selectedElement: Element, outerHtml: string) {
+  const range = document.createRange()
+  range.selectNode(selectedElement)
+  const fragment = range.createContextualFragment(outerHtml.trim())
+  const elements = Array.from(fragment.children)
+  const hasUnexpectedText = Array.from(fragment.childNodes).some((node) => (
+    node.nodeType === Node.TEXT_NODE && Boolean(node.textContent?.trim())
+  ))
+
+  if (elements.length !== 1 || hasUnexpectedText) return null
+
+  return elements[0]
 }
 
 /**

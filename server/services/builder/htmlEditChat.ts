@@ -1,7 +1,9 @@
 import { createHtmlEditSystemPrompt } from './prompts/htmlEditPrompt'
 import type {
   HtmlEditChatRequestMessage,
-  HtmlEditChatResponse
+  HtmlEditChatResponse,
+  HtmlEditOperation,
+  HtmlEditOperationType
 } from '~/types/builder/html-edit-chat'
 
 type EditHtmlWithChatParams = {
@@ -13,7 +15,7 @@ type EditHtmlWithChatParams = {
 }
 
 type GeminiHtmlEditJson = {
-  outerHtml: string
+  operations: HtmlEditOperation[]
   message: string
   warnings: string[]
 }
@@ -33,7 +35,7 @@ export async function editHtmlWithChat(params: EditHtmlWithChatParams): Promise<
 
   if (!config.geminiApiKey) {
     return {
-      outerHtml: params.outerHtml,
+      operations: [],
       message: 'GEMINI_API_KEY가 설정되지 않아 선택 노드를 수정하지 않았습니다.',
       warnings: ['AI HTML 편집 기능을 사용하려면 서버에 GEMINI_API_KEY를 설정해주세요.'],
       meta: {
@@ -49,17 +51,17 @@ export async function editHtmlWithChat(params: EditHtmlWithChatParams): Promise<
     apiKey: config.geminiApiKey,
     model: config.geminiHtmlEditModel || config.geminiImageToHtmlModel || GEMINI_DEFAULT_MODEL
   })
-  const outerHtml = generated.outerHtml?.trim()
+  const operations = generated.operations
 
-  if (!outerHtml) {
+  if (operations.length === 0) {
     throw createError({
       statusCode: 502,
-      statusMessage: 'AI 응답에서 수정된 노드 outerHTML을 찾을 수 없습니다.'
+      statusMessage: 'AI 응답에서 적용할 HTML 편집 작업을 찾을 수 없습니다.'
     })
   }
 
   return {
-    outerHtml,
+    operations,
     message: generated.message?.trim() || '요청한 내용에 맞춰 HTML을 수정했습니다.',
     warnings: generated.warnings || [],
     meta: {
@@ -129,13 +131,26 @@ async function requestHtmlEditFromGemini(params: EditHtmlWithChatParams & {
           type: 'OBJECT',
           properties: {
             message: { type: 'STRING' },
-            outerHtml: { type: 'STRING' },
+            operations: {
+              type: 'ARRAY',
+              items: {
+                type: 'OBJECT',
+                properties: {
+                  operation: {
+                    type: 'STRING',
+                    enum: ['replace', 'insertBefore', 'insertAfter']
+                  },
+                  outerHtml: { type: 'STRING' }
+                },
+                required: ['operation', 'outerHtml']
+              }
+            },
             warnings: {
               type: 'ARRAY',
               items: { type: 'STRING' }
             }
           },
-          required: ['message', 'outerHtml', 'warnings']
+          required: ['message', 'operations', 'warnings']
         }
       }
     }),
@@ -206,21 +221,55 @@ function validateGeminiHtmlEditJson(value: unknown): GeminiHtmlEditJson {
   if (!value || typeof value !== 'object') throw new TypeError('Gemini response is not an object.')
 
   const result = value as Partial<GeminiHtmlEditJson>
-  const outerHtml = typeof result.outerHtml === 'string' ? result.outerHtml.trim() : ''
+  const operations = Array.isArray(result.operations)
+    ? result.operations.map(validateGeminiHtmlEditOperation)
+    : []
   const message = typeof result.message === 'string' ? result.message.trim() : ''
   const warnings = Array.isArray(result.warnings)
     ? result.warnings.filter((warning): warning is string => typeof warning === 'string')
     : []
 
-  if (!outerHtml || !looksLikeHtmlElement(outerHtml)) {
-    throw new TypeError('Gemini response does not contain a valid HTML element.')
+  if (operations.length === 0) {
+    throw new TypeError('Gemini response does not contain HTML edit operations.')
   }
 
   return {
-    outerHtml,
+    operations,
     message: message || '요청한 내용에 맞춰 HTML을 수정했습니다.',
     warnings
   }
+}
+
+/**
+ * Gemini 단일 HTML 편집 작업의 유형과 outerHTML 검증
+ *
+ * @param value 검증할 편집 작업
+ * @returns 검증된 HTML 편집 작업
+ */
+function validateGeminiHtmlEditOperation(value: unknown): HtmlEditOperation {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('Gemini HTML edit operation is not an object.')
+  }
+
+  const result = value as Partial<HtmlEditOperation>
+  const operation = result.operation
+  const outerHtml = typeof result.outerHtml === 'string' ? result.outerHtml.trim() : ''
+
+  if (!isHtmlEditOperationType(operation) || !outerHtml || !looksLikeHtmlElement(outerHtml)) {
+    throw new TypeError('Gemini HTML edit operation is invalid.')
+  }
+
+  return { operation, outerHtml }
+}
+
+/**
+ * 지원하는 HTML 편집 작업 유형 확인
+ *
+ * @param value 검사할 작업 유형
+ * @returns 지원하는 작업 유형이면 true
+ */
+function isHtmlEditOperationType(value: unknown): value is HtmlEditOperationType {
+  return value === 'replace' || value === 'insertBefore' || value === 'insertAfter'
 }
 
 /**

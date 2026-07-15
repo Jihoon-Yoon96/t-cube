@@ -1,9 +1,9 @@
 import type { ShallowRef } from 'vue'
 import { useBuilderEditor } from '~/composables/editor/useBuilderEditor'
 import {
+  applyHtmlLayoutNodeOperations,
   getHtmlLayoutNodeOuterHtml,
-  parseHtmlDocument,
-  replaceHtmlLayoutNodeOuterHtml
+  parseHtmlDocument
 } from '~/services/html/parseHtmlDocument'
 import type { ParsedHtmlLayoutNode } from '~/services/html/parseHtmlDocument'
 import type {
@@ -88,7 +88,6 @@ export function useHtmlEditChat() {
 
       const appliedLayoutNodeId = applyHtmlEditResponse(
         response,
-        sourceOuterHtml,
         currentDocument.sourceName,
         layoutNode.id
       )
@@ -150,39 +149,37 @@ export function useHtmlEditChat() {
   }
 
   /**
-   * AI가 반환한 outerHTML을 선택 노드에 반영
+   * AI가 반환한 복수 HTML 편집 작업을 선택 노드 기준으로 반영
    *
    * @param response HTML 편집 채팅 응답
-   * @param previousOuterHtml 요청 전 선택 노드 outerHTML
    * @param sourceName 현재 문서 출처 이름
-   * @param targetNodeId 교체할 레이아웃 노드 id
+   * @param targetNodeId 작업 기준 레이아웃 노드 id
    * @returns 적용 후 다시 선택할 레이아웃 노드 id, 미적용 시 기존 id, 실패 시 null
    */
   function applyHtmlEditResponse(
     response: HtmlEditChatResponse,
-    previousOuterHtml: string,
     sourceName: string,
     targetNodeId: string
   ) {
-    if (response.outerHtml.trim() === previousOuterHtml.trim()) return targetNodeId
+    if (response.operations.length === 0) return targetNodeId
 
     const currentDocument = builderEditor.currentDocument
 
     if (!currentDocument) return null
 
-    const replacement = replaceHtmlLayoutNodeOuterHtml(
+    const editResult = applyHtmlLayoutNodeOperations(
       currentDocument,
       targetNodeId,
-      response.outerHtml
+      response.operations
     )
 
-    if (!replacement) {
-      throw new TypeError('AI 응답에서 하나의 올바른 HTML 노드를 확인할 수 없습니다.')
+    if (!editResult) {
+      throw new TypeError('AI 응답의 HTML 편집 작업을 현재 노드에 적용할 수 없습니다.')
     }
 
-    const parsedDocument = parseHtmlDocument(replacement.html, { sourceName })
+    const parsedDocument = parseHtmlDocument(editResult.html, { sourceName })
     const appliedLayoutNodeId = parsedDocument.layoutNodes.find((node) => (
-      node.selector === replacement.replacedSelector
+      node.selector === editResult.selectedSelector
     ))?.id || null
 
     builderEditor.applyCurrentDocumentEdit(parsedDocument)
