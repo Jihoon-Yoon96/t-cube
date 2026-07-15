@@ -921,8 +921,12 @@ watch(inspectorMode, (mode) => {
   syncPreviewSelection()
 })
 
-/** iframe HTML 변경 시 이전 문서 기준 편집 팝오버 닫기 */
+/** 요소 편집으로 iframe HTML이 변경되기 전 현재 스크롤 좌표 저장 및 팝오버 닫기 */
 watch(previewHtml, () => {
+  if (inspectorMode.value === 'elements' && !pendingPreviewScrollPosition) {
+    pendingPreviewScrollPosition = getPreviewScrollPosition()
+  }
+
   closeLinkMenu()
 })
 
