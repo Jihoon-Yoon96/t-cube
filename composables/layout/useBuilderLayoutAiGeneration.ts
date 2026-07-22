@@ -40,7 +40,9 @@ export function useBuilderLayoutAiGeneration() {
       formData.append('brief', JSON.stringify({
         category: brief.category,
         purpose: brief.purpose,
-        viewport: brief.viewport
+        viewport: brief.viewport,
+        referenceUrl: brief.referenceUrl,
+        designColors: brief.designColors
       }))
       formData.append('blocks', JSON.stringify(blocks))
       if (brief.planningFile) formData.append('planningFile', brief.planningFile)

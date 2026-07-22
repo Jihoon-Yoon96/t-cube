@@ -22,6 +22,52 @@
         </label>
       </div>
 
+      <label class="layout-info-field layout-info-field-wide">
+        <span>URL <small>선택</small></span>
+        <input
+          v-model="referenceUrl"
+          type="url"
+          placeholder="예: https://www.example.com"
+          autocomplete="url"
+        >
+        <small>참고할 웹페이지의 톤앤매너와 디자인 맥락을 AI가 분석합니다.</small>
+      </label>
+
+      <fieldset class="layout-info-design-field">
+        <legend>디자인값 <small>선택</small></legend>
+        <p>입력한 색상만 AI 웹페이지 생성에 반영됩니다.</p>
+        <div class="layout-info-color-grid">
+          <label v-for="option in colorOptions" :key="option.key" class="layout-info-color-field">
+            <span>{{ option.label }}</span>
+            <div class="layout-info-color-control">
+              <input
+                class="layout-info-color-picker"
+                :class="{ 'is-empty': !designColors[option.key].trim() }"
+                type="color"
+                :value="getColorPickerValue(designColors[option.key])"
+                :aria-label="`${option.label} 선택`"
+                @input="handleColorPickerInput($event, option.key)"
+              >
+              <input
+                v-model="designColors[option.key]"
+                type="text"
+                :placeholder="option.placeholder"
+                maxlength="40"
+                autocomplete="off"
+              >
+              <button
+                v-if="designColors[option.key].trim()"
+                type="button"
+                :aria-label="`${option.label} 초기화`"
+                @click="designColors[option.key] = ''"
+              >
+                <TcubeIcon icon="ri-close-line" />
+              </button>
+            </div>
+          </label>
+        </div>
+      </fieldset>
+
       <fieldset class="layout-info-viewport-field">
         <legend>화면 <em>필수</em></legend>
         <div class="layout-info-viewport-options">
@@ -122,7 +168,11 @@
 </template>
 
 <script setup lang="ts">
-import type { BuilderLayoutDesignBrief, BuilderLayoutViewport } from '~/types/builder/layout-design'
+import type {
+  BuilderLayoutDesignBrief,
+  BuilderLayoutDesignColors,
+  BuilderLayoutViewport
+} from '~/types/builder/layout-design'
 
 const props = defineProps<{
   initialBrief: BuilderLayoutDesignBrief | null
@@ -134,6 +184,13 @@ const emit = defineEmits<{
 
 const category = ref(props.initialBrief?.category ?? '')
 const purpose = ref(props.initialBrief?.purpose ?? '')
+const referenceUrl = ref(props.initialBrief?.referenceUrl ?? '')
+const designColors = reactive<BuilderLayoutDesignColors>({
+  main: props.initialBrief?.designColors?.main ?? '',
+  sub: props.initialBrief?.designColors?.sub ?? '',
+  background: props.initialBrief?.designColors?.background ?? '',
+  accent: props.initialBrief?.designColors?.accent ?? ''
+})
 const viewport = ref<BuilderLayoutViewport | ''>(props.initialBrief?.viewport ?? '')
 const planningFile = shallowRef<File | null>(props.initialBrief?.planningFile ?? null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
@@ -152,12 +209,45 @@ const viewportOptions: Array<{
   { value: 'responsive', label: '반응형', description: '화면 크기에 맞춰 대응', icon: 'ri-responsive-line' }
 ]
 
+const colorOptions: Array<{
+  key: keyof BuilderLayoutDesignColors
+  label: string
+  placeholder: string
+}> = [
+  { key: 'main', label: '메인 컬러', placeholder: '예: #675CFF' },
+  { key: 'sub', label: '서브 컬러', placeholder: '예: #AEB7E8' },
+  { key: 'background', label: '배경 컬러', placeholder: '예: #0D1020' },
+  { key: 'accent', label: '강조 컬러', placeholder: '예: #FFB547' }
+]
+
 /** 필수 정보 입력 완료 여부 */
 const canProceed = computed(() => (
   Boolean(category.value.trim())
   && Boolean(purpose.value.trim())
   && Boolean(viewport.value)
 ))
+
+/**
+ * 색상 선택기에 표시할 유효한 HEX 색상 반환
+ *
+ * @param value 현재 색상 입력값
+ * @returns 유효한 6자리 HEX 또는 기본 색상
+ */
+function getColorPickerValue(value: string) {
+  const normalizedValue = value.trim()
+
+  return /^#[\da-f]{6}$/i.test(normalizedValue) ? normalizedValue : '#675cff'
+}
+
+/**
+ * 네이티브 색상 선택값을 해당 디자인 색상 상태에 반영
+ *
+ * @param event 색상 input 이벤트
+ * @param key 변경할 디자인 색상 항목
+ */
+function handleColorPickerInput(event: Event, key: keyof BuilderLayoutDesignColors) {
+  designColors[key] = (event.target as HTMLInputElement).value.toUpperCase()
+}
 
 /** 로컬 PDF 파일 선택 창 열기 */
 function openFilePicker() {
@@ -242,6 +332,13 @@ function submitInformation() {
     category: category.value.trim(),
     purpose: purpose.value.trim(),
     viewport: viewport.value,
+    referenceUrl: referenceUrl.value.trim(),
+    designColors: {
+      main: designColors.main.trim(),
+      sub: designColors.sub.trim(),
+      background: designColors.background.trim(),
+      accent: designColors.accent.trim()
+    },
     planningFile: planningFile.value
   })
 }
@@ -328,10 +425,22 @@ onBeforeUnmount(() => {
 
 .layout-info-field > span,
 .layout-info-viewport-field legend,
+.layout-info-design-field legend,
 .layout-info-attachment-heading > span {
   color: var(--text-strong);
   font-size: 13px;
   font-weight: 900;
+}
+
+.layout-info-field > span small,
+.layout-info-design-field legend small {
+  margin-left: 4px;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.layout-info-field-wide {
+  grid-column: 1 / -1;
 }
 
 .layout-info-field em,
@@ -375,6 +484,110 @@ onBeforeUnmount(() => {
   color: var(--text-secondary);
   font-size: 11px;
   font-weight: 700;
+}
+
+.layout-info-design-field {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.layout-info-design-field > p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.layout-info-color-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.layout-info-color-field {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.layout-info-color-field > span {
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.layout-info-color-control {
+  min-width: 0;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid rgba(174, 183, 232, 0.14);
+  border-radius: 10px;
+  background: rgba(13, 16, 32, 0.72);
+  padding: 6px 10px;
+}
+
+.layout-info-color-control:focus-within {
+  border-color: rgba(139, 145, 255, 0.68);
+  box-shadow: 0 0 0 3px rgba(139, 145, 255, 0.1);
+}
+
+.layout-info-color-control .layout-info-color-picker {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.layout-info-color-control .layout-info-color-picker.is-empty {
+  opacity: 0.36;
+  filter: grayscale(1);
+}
+
+.layout-info-color-picker::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.layout-info-color-picker::-webkit-color-swatch {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 7px;
+}
+
+.layout-info-color-control input[type='text'] {
+  min-width: 0;
+  height: 100%;
+  flex: 1 1 auto;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  outline: none;
+}
+
+.layout-info-color-control button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  padding: 0;
+  cursor: pointer;
 }
 
 .layout-info-viewport-field {
@@ -634,6 +847,7 @@ onBeforeUnmount(() => {
   }
 
   .layout-info-field-grid,
+  .layout-info-color-grid,
   .layout-info-viewport-options {
     grid-template-columns: 1fr;
   }

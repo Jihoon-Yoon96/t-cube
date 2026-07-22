@@ -22,6 +22,12 @@
           <span><TcubeIcon icon="ri-folder-3-line" />{{ layoutDesignBrief.category }}</span>
           <span><TcubeIcon icon="ri-focus-3-line" />{{ layoutDesignBrief.purpose }}</span>
           <span><TcubeIcon icon="ri-device-line" />{{ viewportLabels[layoutDesignBrief.viewport] }}</span>
+          <span v-if="layoutDesignBrief.referenceUrl">
+            <TcubeIcon icon="ri-links-line" />{{ layoutDesignBrief.referenceUrl }}
+          </span>
+          <span v-if="formatDesignColorSummary(layoutDesignBrief)">
+            <TcubeIcon icon="ri-palette-line" />{{ formatDesignColorSummary(layoutDesignBrief) }}
+          </span>
           <span v-if="layoutDesignBrief.planningFile">
             <TcubeIcon icon="ri-file-pdf-2-line" />{{ layoutDesignBrief.planningFile.name }}
           </span>
@@ -317,6 +323,26 @@ const viewportLabels: Record<BuilderLayoutViewport, string> = {
   pc: 'PC',
   mobile: 'Mobile',
   responsive: '반응형'
+}
+
+/**
+ * 입력된 디자인 색상을 2단계 요약 문자열로 변환
+ *
+ * @param brief 사용자 입력 웹페이지 정보
+ * @returns 입력된 색상만 결합한 문자열
+ */
+function formatDesignColorSummary(brief: BuilderLayoutDesignBrief) {
+  const labels = {
+    main: '메인',
+    sub: '서브',
+    background: '배경',
+    accent: '강조'
+  }
+
+  return Object.entries(brief.designColors)
+    .filter(([, value]) => value)
+    .map(([key, value]) => `${labels[key as keyof typeof labels]} ${value}`)
+    .join(' · ')
 }
 
 const shapeTools: Array<{ type: BuilderLayoutBlockType, label: string, icon: string }> = [

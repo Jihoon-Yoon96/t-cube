@@ -1,12 +1,17 @@
 import { generateLayoutDesign } from '~/server/services/builder/layoutDesignGenerate'
 import type { BuilderLayoutBlock } from '~/stores/builder/type/types'
 import type { DesignToHtmlResponse } from '~/types/builder/design-to-html'
-import type { BuilderLayoutViewport } from '~/types/builder/layout-design'
+import type {
+  BuilderLayoutDesignColors,
+  BuilderLayoutViewport
+} from '~/types/builder/layout-design'
 
 type LayoutDesignBriefPayload = {
   category?: unknown
   purpose?: unknown
   viewport?: unknown
+  referenceUrl?: unknown
+  designColors?: unknown
 }
 
 /**
@@ -28,6 +33,9 @@ export default defineEventHandler(async (event): Promise<DesignToHtmlResponse> =
     })
   }
 
+  const referenceUrl = normalizeReferenceUrl(brief.referenceUrl)
+  const designColors = normalizeDesignColors(brief.designColors)
+
   if (planningFile?.data.length && !isPdfFile(planningFile.type, planningFile.filename)) {
     throw createError({
       statusCode: 400,
@@ -39,6 +47,8 @@ export default defineEventHandler(async (event): Promise<DesignToHtmlResponse> =
     category: brief.category,
     purpose: brief.purpose,
     viewport: brief.viewport,
+    referenceUrl,
+    designColors,
     blocks,
     planningFile: planningFile?.data.length
       ? {
@@ -99,6 +109,52 @@ function isValidBrief(brief: LayoutDesignBriefPayload | null): brief is {
     && brief.purpose.trim()
     && ['pc', 'mobile', 'responsive'].includes(String(brief.viewport))
   )
+}
+
+/**
+ * 선택 입력 URL의 프로토콜과 길이 검증 및 정규화
+ *
+ * @param value URL 입력값
+ * @returns 정규화된 공개 웹 URL 또는 undefined
+ */
+function normalizeReferenceUrl(value: unknown) {
+  if (typeof value !== 'string' || !value.trim()) return undefined
+
+  const normalizedValue = value.trim()
+
+  if (normalizedValue.length > 2048) {
+    throw createError({ statusCode: 400, statusMessage: '참고 URL이 너무 깁니다.' })
+  }
+
+  try {
+    const url = new URL(normalizedValue)
+
+    if (!['http:', 'https:'].includes(url.protocol)) throw new Error('unsupported protocol')
+
+    return url.toString()
+  } catch {
+    throw createError({ statusCode: 400, statusMessage: '참고 URL 형식이 올바르지 않습니다.' })
+  }
+}
+
+/**
+ * 입력된 디자인 색상 문자열만 AI 전달 객체로 정리
+ *
+ * @param value 디자인 색상 payload
+ * @returns 값이 입력된 디자인 색상 객체
+ */
+function normalizeDesignColors(value: unknown): Partial<BuilderLayoutDesignColors> {
+  if (!value || typeof value !== 'object') return {}
+
+  const source = value as Record<string, unknown>
+  const colorKeys: Array<keyof BuilderLayoutDesignColors> = ['main', 'sub', 'background', 'accent']
+
+  return colorKeys.reduce<Partial<BuilderLayoutDesignColors>>((colors, key) => {
+    const color = source[key]
+
+    if (typeof color === 'string' && color.trim()) colors[key] = color.trim().slice(0, 40)
+    return colors
+  }, {})
 }
 
 /**

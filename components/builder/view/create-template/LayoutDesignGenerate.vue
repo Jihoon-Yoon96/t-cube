@@ -49,6 +49,14 @@
           <strong>{{ viewportLabels[brief.viewport] }}</strong>
         </div>
         <div>
+          <span>참고 URL</span>
+          <strong>{{ brief.referenceUrl || '없음' }}</strong>
+        </div>
+        <div>
+          <span>디자인값</span>
+          <strong>{{ designColorSummary || '없음' }}</strong>
+        </div>
+        <div>
           <span>첨부자료</span>
           <strong>{{ brief.planningFile?.name || '없음' }}</strong>
         </div>
@@ -144,6 +152,21 @@ const viewportLabels: Record<BuilderLayoutViewport, string> = {
   mobile: 'Mobile',
   responsive: '반응형'
 }
+
+/** 입력된 디자인 색상의 3단계 확인용 요약 문자열 */
+const designColorSummary = computed(() => {
+  const labels = {
+    main: '메인',
+    sub: '서브',
+    background: '배경',
+    accent: '강조'
+  }
+
+  return Object.entries(props.brief.designColors)
+    .filter(([, value]) => value)
+    .map(([key, value]) => `${labels[key as keyof typeof labels]} ${value}`)
+    .join(' · ')
+})
 
 /** AI 생성 작업의 경과 시간을 분:초 형식으로 변환 */
 const generationElapsedLabel = computed(() => {
@@ -295,7 +318,7 @@ onBeforeUnmount(() => {
 
 .layout-generate-brief-card {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   overflow: hidden;
   border: 1px solid rgba(174, 183, 232, 0.12);
   border-radius: 12px;
@@ -310,8 +333,12 @@ onBeforeUnmount(() => {
   padding: 15px;
 }
 
-.layout-generate-brief-card > div:last-child {
+.layout-generate-brief-card > div:nth-child(3n) {
   border-right: 0;
+}
+
+.layout-generate-brief-card > div:nth-child(-n + 3) {
+  border-bottom: 1px solid rgba(174, 183, 232, 0.1);
 }
 
 .layout-generate-brief-card span {
@@ -613,7 +640,15 @@ onBeforeUnmount(() => {
     border-right: 0;
   }
 
-  .layout-generate-brief-card > div:nth-child(-n + 2) {
+  .layout-generate-brief-card > div:nth-child(3n) {
+    border-right: 1px solid rgba(174, 183, 232, 0.1);
+  }
+
+  .layout-generate-brief-card > div:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .layout-generate-brief-card > div:nth-child(-n + 4) {
     border-bottom: 1px solid rgba(174, 183, 232, 0.1);
   }
 }
